@@ -1,0 +1,12 @@
+allowBuilds:
+  '@openrouter/sdk': true
+  sharp: true
+  tesseract.js: false
+  unrs-resolver: true
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+overrides:
+  nanoid: 3.3.17
+  postcss: 8.5.25
+  sharp: 0.35.3
