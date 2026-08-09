@@ -62,6 +62,8 @@ jobs:
         run: pnpm test
       - name: Validate production smoke script
         run: node scripts/smoke-production.contract.mjs
+      - name: Validate release-readiness checker
+        run: pnpm test:release-check
 
   browser-and-build:
     needs: audit-and-test

@@ -23,6 +23,14 @@ cp .env.example .env.local
 pnpm dev
 ```
 
+To open the complete mocked product flow without email, database or Stripe setup, run:
+
+```bash
+pnpm preview:local
+```
+
+Then open `http://127.0.0.1:3101`. This command enables Milo's local-only test identity, AI and billing path. Production builds reject this mode; never use it for a preview or production deployment.
+
 On Windows, copy `.env.example` to `.env.local` in File Explorer or open `.env.local` with Notepad. Never paste secret keys into chat, source code or terminal command history.
 
 The public demo at `/demo` uses a fixed fictional conversation and makes no AI request.
@@ -169,6 +177,8 @@ On PowerShell, set the variable only for the current terminal session before run
 - Review Vercel security events, Supabase advisors, Stripe webhook delivery, email-provider bounces/complaints, dependency alerts and CodeQL at least weekly.
 
 ## Launch checklist
+
+Run `pnpm release:check` before creating a production deployment. It reports missing variable names, Git/Vercel linkage, legal placeholders and worktree state without printing secret values. A passing automated check does not replace the manual SMTP, callback, Stripe lifecycle, legal-review or HTTPS gates below.
 
 - Complete every production release gate in [SECURITY.md](./SECURITY.md). The GitHub security workflows activate only after this folder is published as its own repository.
 - Replace the legal placeholders in `/privacy` and `/terms` after qualified review.

@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "preview:local": "node scripts/local-preview.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -20,7 +21,9 @@
     "test:e2e:ui": "playwright test --ui",
     "smoke:openrouter": "node scripts/smoke-openrouter.mjs",
     "test:smoke:production-contract": "node scripts/smoke-production.contract.mjs",
-    "smoke:production": "node scripts/smoke-production.mjs"
+    "smoke:production": "node scripts/smoke-production.mjs",
+    "release:check": "node scripts/release-readiness.mjs",
+    "test:release-check": "node scripts/release-readiness.contract.mjs"
   },
   "dependencies": {
     "@openrouter/sdk": "^1.2.3",
