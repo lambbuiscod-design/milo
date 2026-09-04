@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["node", "electron"],
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@desktop/*": ["src/*"]
+    }
+  },
+  "include": [
+    "forge.config.ts",
+    "vite.main.config.ts",
+    "vite.preload.config.ts",
+    "vite.renderer.config.ts",
+    "vitest.config.ts",
+    "src/main/**/*.ts",
+    "src/shared/**/*.ts"
+  ]
+}
+

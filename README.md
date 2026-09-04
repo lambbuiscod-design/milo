@@ -1,6 +1,6 @@
 # Milo
 
-Milo is a mobile-first dating-message reply coach. A signed-in adult uploads a conversation screenshot, chooses a tone and receives three editable suggestions: safe, confident and playful.
+Milo is evolving into a privacy-first Windows desktop companion while preserving the existing screenshot-based web coach. The website remains the account, authentication, billing and cloud/API control plane. The Windows companion is delivered incrementally under the approved plan in `docs/exec-plans/active/windows-p0.md`.
 
 Milo never stores uploaded screenshots or extracted original conversations. Images are validated, sanitized in memory and read by private in-process OCR. Only the temporary OCR transcript and optional context are sent to OpenRouter; image and transcript buffers are cleared when practical. Milo never sends messages automatically.
 
@@ -12,14 +12,30 @@ Milo never stores uploaded screenshots or extracted original conversations. Imag
 - Stripe Checkout, Customer Portal and verified/idempotent webhooks
 - Vitest, Testing Library and Playwright
 - Vercel-compatible Node.js route handlers
+- pnpm workspace packages for shared contracts, pure AI helpers, security rules and synthetic fixtures
+
+## Repository layout
+
+```text
+apps/web                 Next.js website and server/API control plane
+packages/contracts       Shared Zod schemas and types
+packages/ai              Pure provider serialization/normalization helpers
+packages/security        Pure safety policy and deterministic checks
+packages/test-fixtures   Synthetic-only evaluation fixtures
+supabase                 Additive migrations and pgTAP security tests
+e2e/web                  Mocked and optimized-production browser tests
+docs                     Architecture, invariants, decisions and execution plans
+```
+
+The Electron desktop shell is implemented under `apps/desktop`; Windows-native extraction remains a later phase under `native/windows`.
 
 ## Local setup
 
-Requirements: Node.js 20.19+ and pnpm 11.16.
+Requirements: Node.js 24.19.0 and pnpm 10.34.5. Native Windows development will additionally require the .NET 10.0.302 SDK when that project lands.
 
 ```bash
 pnpm install
-cp .env.example .env.local
+cp apps/web/.env.example apps/web/.env.local
 pnpm dev
 ```
 
@@ -31,19 +47,24 @@ pnpm preview:local
 
 Then open `http://127.0.0.1:3101`. This command enables Milo's local-only test identity, AI and billing path. Production builds reject this mode; never use it for a preview or production deployment.
 
-On Windows, copy `.env.example` to `.env.local` in File Explorer or open `.env.local` with Notepad. Never paste secret keys into chat, source code or terminal command history.
+On Windows, copy `apps/web/.env.example` to `apps/web/.env.local` in File Explorer or open `apps/web/.env.local` with Notepad. Never paste secret keys into chat, source code or terminal command history.
 
 The public demo at `/demo` uses a fixed fictional conversation and makes no AI request.
 
 ## OpenRouter
 
 1. Create an inference key at OpenRouter and add credits or a suitable limit.
-2. Set `OPENROUTER_API_KEY` in `.env.local`.
+2. Set `OPENROUTER_API_KEY` in `apps/web/.env.local`.
 3. Set `OPENROUTER_MODEL=deepseek/deepseek-v4-flash-0731`. Milo pins this model so deployments cannot silently drift to a different model.
+4. Set `OPENROUTER_PROVIDER_ALLOWLIST` to the comma-separated provider IDs reviewed for privacy and structured-output support. Milo fails closed when this list is empty; it never uses unrestricted provider fallback.
    This endpoint accepts text, so Milo first extracts the visible screenshot text inside the server process. The temporary OCR transcript is sent to DeepSeek for analysis, but is never written to the database, logs, or analytics.
-4. Keep the key server-side; never prefix it with `NEXT_PUBLIC_`.
+5. Keep the key server-side; never prefix it with `NEXT_PUBLIC_`.
 
 The analysis route does not send screenshot files to OpenRouter. It requests zero-data-retention routing and denies providers that collect prompts; OpenRouter/provider policy and endpoint availability must still be reviewed before launch.
+
+## Desktop suggestion API
+
+The Windows client will call `/api/v1/suggest` with an HTTPS bearer access token, the configured `x-milo-client-id`, and JSON containing up to eight normalized messages (4,000 Unicode characters total), a tone, relationship stage, client version, and opaque request ID. The route rejects multipart/image input, requires an AAL2 eligible account, applies distributed user/IP limits, and returns three validated suggestions without storing transcript or reply text. Configure `MILO_DESKTOP_CLIENT_ID` to the registered public desktop OAuth client ID and apply the additive `desktop_suggestions` migration before enabling the client.
 
 ## Supabase
 
@@ -65,6 +86,17 @@ pnpm dlx supabase@latest migration list
 6. In **Authentication → URL Configuration**, set the Site URL to `http://localhost:3000` locally and add `http://localhost:3000/auth/callback` as an allowed redirect. Add the production Vercel URLs before deployment.
 7. Keep email magic links enabled. In the project Auth MFA settings, keep TOTP enrollment, challenge and verification enabled.
 8. For production, enable Supabase security-notification email templates for MFA enrollment and removal when that feature is available for your project.
+
+### Supabase OAuth authorization path
+
+The Windows client is a public OAuth client and does not contain a client secret. Register one public Supabase OAuth client per environment with an exact loopback callback, then set:
+
+- `MILO_DESKTOP_CLIENT_ID` to that registered client ID.
+- `MILO_DESKTOP_REDIRECT_URI` to the exact callback, for example `http://127.0.0.1:43821/oauth/callback`.
+
+Enable the Supabase OAuth 2.1 server and set its authorization URL path to `/oauth/consent`. Supabase sends the browser to Milo’s first-party consent page with a bounded `authorization_id`. If the user is not signed in, Milo carries only that internal consent destination through the magic-link callback; after sign-in, an eligible adult must complete MFA at AAL2 before the request can be approved. The page displays the registered client and the allowlisted `openid`, `email` and `profile` scopes, with explicit **Approve** and **Deny** actions.
+
+Milo calls Supabase Auth JS `getAuthorizationDetails`, `approveAuthorization` or `denyAuthorization` with browser redirects disabled, then validates the returned one-time-code/error URL against the exact registered loopback origin and path before navigating. It never renders tokens, accepts arbitrary `next` URLs, stores authorization requests, or logs authorization IDs, callback URLs or user content. Configure the OAuth client and callback in each Supabase environment before enabling desktop sign-in; the route fails closed when either Milo OAuth environment variable is missing.
 
 ### Production email delivery gate
 
@@ -149,8 +181,8 @@ For an optional real integration smoke test, configure test Supabase, OpenRouter
 ## Vercel deployment
 
 1. Push the `milo` directory to a private GitHub repository and let `Security and quality gates` plus `CodeQL` pass. Protect `main` with those required checks.
-2. Import that repository into Vercel as a Next.js project. Use `main` as the production branch and enable preview deployments for pull requests.
-3. Add every variable from `.env.example` except `MILO_E2E_MODE`; set `NEXT_PUBLIC_APP_URL` to the final HTTPS production origin. Use separate test credentials for Preview and live credentials only for Production.
+2. Import that repository into Vercel as a Next.js project. Set **Root Directory** to `apps/web`, enable source files outside the Root Directory for workspace packages, use `main` as the production branch and enable preview deployments for pull requests.
+3. Add every variable from `apps/web/.env.example` except `MILO_E2E_MODE`; set `NEXT_PUBLIC_APP_URL` to the final HTTPS production origin. Use separate test credentials for Preview and live credentials only for Production.
 4. Add the exact production callback URL to Supabase Auth. Add preview callbacks only when they are intentionally protected and use a non-production Supabase project.
 5. Add the production Stripe webhook URL and update `STRIPE_WEBHOOK_SECRET` in Vercel. Keep Stripe key, price and webhook secret in the same mode.
 6. Deploy a preview, run the automated browser suite against the local production build, and manually inspect the preview before merging.

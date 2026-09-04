@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Milo.Native.Windows</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Milo.TestChat is a separate synthetic fixture project nested beside
+         the helper. Keep its source, XAML, and generated output out of the
+         production native helper's default SDK item globs. -->
+    <Compile Remove="Milo.TestChat\**\*.cs" />
+    <Page Remove="Milo.TestChat\**\*.xaml" />
+    <ApplicationDefinition Remove="Milo.TestChat\**\*.xaml" />
+    <EmbeddedResource Remove="Milo.TestChat\**\*" />
+    <None Remove="Milo.TestChat\**\*" />
+  </ItemGroup>
+</Project>

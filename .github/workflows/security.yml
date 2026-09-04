@@ -43,13 +43,14 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 11.16.0
+          version: 10.34.5
           run_install: false
-      - name: Use Node.js 20
+      - name: Use pinned Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 20.19.0
+          node-version-file: .node-version
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Audit production dependencies
@@ -64,6 +65,8 @@ jobs:
         run: node scripts/smoke-production.contract.mjs
       - name: Validate release-readiness checker
         run: pnpm test:release-check
+      - name: Check patch formatting
+        run: git diff --check
 
   browser-and-build:
     needs: audit-and-test
@@ -75,13 +78,14 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 11.16.0
+          version: 10.34.5
           run_install: false
-      - name: Use Node.js 20
+      - name: Use pinned Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 20.19.0
+          node-version-file: .node-version
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Production build

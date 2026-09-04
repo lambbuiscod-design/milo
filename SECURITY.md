@@ -1,6 +1,6 @@
 # Milo security policy
 
-Milo handles private conversation screenshots, so security and data minimization are release requirements. This document describes implemented controls and the external controls that must be configured before production. It is not a claim that the service is unhackable or independently certified.
+Milo handles private conversation content, so security and data minimization are release requirements. This document describes implemented web controls and the external controls that must be configured before production. The Windows desktop invariants and staged implementation requirements are defined in `docs/SECURITY-INVARIANTS.md` and are not claimed as implemented before their corresponding phase passes. This is not a claim that the service is unhackable or independently certified.
 
 ## Reporting a vulnerability
 
@@ -22,6 +22,9 @@ Include the affected route or component, reproduction steps, impact, and any saf
 - Logs contain operational identifiers and error classes, not screenshot bodies, extracted conversations, generated replies, API keys, Stripe signatures, or raw webhook bodies.
 - Production cannot enable the local E2E identity or reset behavior because `MILO_E2E_MODE` is disabled whenever `NODE_ENV=production`.
 - The lockfile is committed, vulnerable transitive versions are overridden, and CI runs dependency audit, lint, type checks, tests, Dependabot, and CodeQL.
+- The repository uses one pnpm workspace lockfile, Node 24.19.0, pnpm 10.34.5 and a .NET 10.0.302 pin for future native projects. Shared packages are secret-free and may not import web/provider/service-role modules.
+
+The Phase 1 workspace foundation does not yet implement Electron, Windows capture, local desktop OCR, desktop authentication, signing or updating. Those capabilities must not be represented as available until their phase-specific tests and release evidence pass.
 
 ## Production release gates
 
@@ -68,3 +71,5 @@ MILO_PRODUCTION_URL=https://milo.example pnpm smoke:production
 ```
 
 Review Supabase security advisors, Stripe webhook failures, Vercel security events, dependency alerts, and CodeQL findings before each release and weekly while production is active.
+
+Run all workspace commands from the repository root. Web environment values belong in `apps/web/.env.local`; never place backend secrets in a future desktop package or shared package.

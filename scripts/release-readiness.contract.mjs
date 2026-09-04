@@ -6,6 +6,17 @@ import {
 
 const completeEnv = Object.fromEntries(REQUIRED_PRODUCTION_ENV.map((name) => [name, `${name}-configured`]));
 completeEnv.NEXT_PUBLIC_APP_URL = "https://milo.example";
+completeEnv.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
+completeEnv.MILO_DESKTOP_REDIRECT_URI = "http://127.0.0.1:43821/oauth/callback";
+completeEnv.RATE_LIMIT_HASH_SECRET = "a".repeat(32);
+
+for (const requiredName of [
+  "OPENROUTER_PROVIDER_ALLOWLIST",
+  "MILO_DESKTOP_CLIENT_ID",
+  "MILO_DESKTOP_REDIRECT_URI",
+]) {
+  assert(REQUIRED_PRODUCTION_ENV.includes(requiredName), `${requiredName} must be release-required`);
+}
 
 const ready = evaluateReleaseReadiness({
   env: completeEnv,
@@ -26,6 +37,9 @@ const blocked = evaluateReleaseReadiness({
 assert.equal(blocked.ready, false);
 assert(blocked.issues.some((issue) => issue.startsWith("Missing environment variables:")));
 assert(blocked.issues.some((issue) => issue.includes("non-local HTTPS")));
+assert(blocked.issues.some((issue) => issue.includes("Supabase origin")));
+assert(blocked.issues.some((issue) => issue.includes("OAuth callback")));
+assert(blocked.issues.some((issue) => issue.includes("32 characters")));
 assert(blocked.issues.some((issue) => issue.includes("MILO_E2E_MODE")));
 assert(blocked.issues.some((issue) => issue.includes("launch placeholder")));
 assert(blocked.issues.some((issue) => issue.includes("Git remote")));

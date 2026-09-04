@@ -1,12 +1,23 @@
+packages:
+  - apps/*
+  - packages/*
+
+nodeLinker: hoisted
+
+strictDepBuilds: true
+
 allowBuilds:
   '@openrouter/sdk': true
+  electron: true
+  electron-winstaller: true
+  'esbuild@0.28.2': true
   sharp: true
   tesseract.js: false
   unrs-resolver: true
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
 overrides:
-  nanoid: 3.3.17
+  '@electron/packager>extract-zip': 'npm:@electron-internal/extract-zip@1.0.5'
+  'external-editor>tmp': 0.2.7
+  nanoid: 3.3.18
   postcss: 8.5.25
   sharp: 0.35.3
+  tar: 7.5.21

@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -11,19 +11,26 @@
 !.yarn/versions
 
 # testing
-/coverage
+**/coverage/
 /test-results/
 /playwright-report/
 /artifacts/
+/.agents/
 
 # next.js
-/.next/
-/.next-e2e/
-/.next-e2e-dev/
-/out/
+**/.next/
+**/.next-e2e/
+**/.next-e2e-dev/
+**/out/
+**/.vite/
+**/make/
+apps/desktop/native-runtime/
 
 # production
-/build
+**/build/
+native/**/bin/
+native/**/obj/
+*.dmp
 
 # misc
 .DS_Store
@@ -34,14 +41,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+milo-preview.log
+milo-preview-error.log
+
+# local credential-bearing command/config scratch files
+deepseekspro.json
 
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
 
 # vercel
-.vercel
+**/.vercel/
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+**/next-env.d.ts

@@ -1,0 +1,53 @@
+{
+  "name": "@milo/web",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "preview:local": "node scripts/local-preview.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --configLoader native",
+    "test:watch": "vitest --configLoader native",
+    "smoke:openrouter": "node scripts/smoke-openrouter.mjs"
+  },
+  "dependencies": {
+    "@milo/ai": "workspace:*",
+    "@milo/contracts": "workspace:*",
+    "@milo/security": "workspace:*",
+    "@openrouter/sdk": "^1.2.3",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.111.0",
+    "lucide-react": "^1.28.0",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "sharp": "0.35.3",
+    "stripe": "^22.4.0",
+    "tesseract.js": "^7.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@next/env": "^16.2.12",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "daisyui": "^5.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.12",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}

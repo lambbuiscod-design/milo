@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["node", "vitest/globals"],
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@desktop/*": ["src/*"]
+    }
+  },
+  "include": [
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "src/main/**/*.ts",
+    "src/shared/**/*.ts"
+  ]
+}

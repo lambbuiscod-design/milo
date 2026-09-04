@@ -1,0 +1,142 @@
+name: Desktop security and Windows smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/desktop.yml"
+      - ".node-version"
+      - "apps/desktop/**"
+      - "e2e/desktop/**"
+      - "global.json"
+      - "native/windows/**"
+      - "package.json"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "scripts/desktop-*.mjs"
+      - "scripts/native-live-smoke.mjs"
+      - "scripts/test-chat-fixture.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/desktop.yml"
+      - ".node-version"
+      - "apps/desktop/**"
+      - "e2e/desktop/**"
+      - "global.json"
+      - "native/windows/**"
+      - "package.json"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "scripts/desktop-*.mjs"
+      - "scripts/native-live-smoke.mjs"
+      - "scripts/test-chat-fixture.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phase-2-contract:
+    name: Electron shell security contract
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      ELECTRON_ENABLE_SECURITY_WARNINGS: "true"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: "10.34.5"
+          run_install: false
+
+      - name: Use pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Use pinned .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Verify toolchain pins
+        shell: pwsh
+        run: |
+          $expectedNode = (Get-Content -LiteralPath .node-version -Raw).Trim()
+          $actualNode = (node --version).Trim().TrimStart('v')
+          if ($actualNode -ne $expectedNode) {
+            throw "Expected Node $expectedNode but found $actualNode"
+          }
+
+          $rootPackage = Get-Content -LiteralPath package.json -Raw | ConvertFrom-Json
+          $expectedPnpm = $rootPackage.packageManager -replace '^pnpm@', ''
+          $actualPnpm = (pnpm --version).Trim()
+          if ($actualPnpm -ne $expectedPnpm) {
+            throw "Expected pnpm $expectedPnpm but found $actualPnpm"
+          }
+
+          $sdkConfig = Get-Content -LiteralPath global.json -Raw | ConvertFrom-Json
+          $expectedDotnet = $sdkConfig.sdk.version
+          $actualDotnet = (dotnet --version).Trim()
+          if ($actualDotnet -ne $expectedDotnet) {
+            throw "Expected .NET SDK $expectedDotnet but found $actualDotnet"
+          }
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify source and workflow contracts
+        run: >-
+          node --test --test-isolation=none
+          e2e/desktop/artifact-scanner.contract.test.mjs
+          e2e/desktop/native-protocol.contract.test.mjs
+          e2e/desktop/source-security.contract.test.mjs
+          e2e/desktop/workflow.contract.test.mjs
+
+      - name: Build native Windows helper
+        run: dotnet build native/windows/Milo.Native.Windows.csproj --configuration Release
+
+      - name: Build synthetic Windows chat fixture
+        run: dotnet build native/windows/Milo.TestChat/Milo.TestChat.csproj --configuration Release
+
+      - name: Verify synthetic fixture privacy contract
+        run: node scripts/test-chat-fixture.mjs
+
+      - name: Enforce desktop source security invariants
+        run: node scripts/desktop-security-check.mjs
+
+      - name: Type check desktop
+        run: pnpm --filter @milo/desktop typecheck
+
+      - name: Run desktop unit tests
+        run: pnpm --filter @milo/desktop test
+
+      - name: Build desktop bundles
+        run: pnpm --filter @milo/desktop build
+
+      - name: Run live Electron shell smoke
+        run: node e2e/desktop/electron-shell.e2e.mjs
+
+      - name: Package unsigned internal Windows app
+        run: pnpm --filter @milo/desktop package
+
+      - name: Scan packaged app as hostile-readable output
+        run: node scripts/desktop-artifact-scan.mjs apps/desktop/out
+
+      - name: Prove packaged ASAR integrity fails closed
+        run: node scripts/desktop-asar-tamper.mjs apps/desktop/out
+
+      - name: Check patch formatting
+        run: git diff --check
