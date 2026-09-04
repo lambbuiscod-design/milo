@@ -7,3 +7,4 @@
 - Use the pinned Node and .NET versions. Run commands from the repository root unless a package document says otherwise.
 - Preserve the root Supabase migration history. Add migrations; never rename or rewrite applied migrations.
 - Do not persist or log screenshots, conversation text, participant names, generated replies, clipboard content or authentication credentials.
+- After each coherent implementation is verified, create a descriptive commit and push it to the current branch's configured upstream. Never commit secrets, local environment files, dependencies or generated release artifacts, and do not push a failing state unless the user explicitly requests a checkpoint.
