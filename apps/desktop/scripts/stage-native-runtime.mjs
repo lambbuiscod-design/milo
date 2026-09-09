@@ -21,8 +21,10 @@ if (path.dirname(stagingRoot) !== desktopRoot || path.basename(stagingRoot) !== 
 }
 
 try {
-  const helper = await stat(helperPath);
-  if (!helper.isFile() || helper.size < 1) throw new Error("INVALID_NATIVE_HELPER");
+  for (const file of [helperPath, path.join(publishRoot, "coreclr.dll"), path.join(publishRoot, "hostfxr.dll")]) {
+    const helper = await stat(file);
+    if (!helper.isFile() || helper.size < 1) throw new Error("INVALID_NATIVE_RUNTIME");
+  }
 } catch {
   throw new Error(
     "Milo native helper is missing. Publish native/windows/Milo.Native.Windows.csproj for win-x64 Release before packaging.",

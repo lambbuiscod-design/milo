@@ -1,15 +1,15 @@
-import { useId } from "react";
-
 type MiloCatProps = {
   className?: string;
   label?: string;
   mood?: "happy" | "thinking";
 };
 
+/**
+ * Milo the cat — warm charcoal with terracotta accents.
+ * Matches the Electron MiloCat style. No blue gradient, no remote deps.
+ * Two moods: "happy" (smile) and "thinking" (narrowed eyes, pursed mouth).
+ */
 export function MiloCat({ className = "", label, mood = "happy" }: MiloCatProps) {
-  const gradientId = useId();
-  const shadowId = useId();
-
   return (
     <svg
       aria-hidden={label ? undefined : true}
@@ -19,35 +19,86 @@ export function MiloCat({ className = "", label, mood = "happy" }: MiloCatProps)
       viewBox="0 0 180 180"
       role={label ? "img" : undefined}
     >
-      <defs>
-        <linearGradient id={gradientId} x1="28" y1="24" x2="145" y2="158" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#9da6ff" />
-          <stop offset=".48" stopColor="#7280fb" />
-          <stop offset="1" stopColor="#5163ec" />
-        </linearGradient>
-        <filter id={shadowId} x="-30%" y="-30%" width="160%" height="170%">
-          <feDropShadow dx="0" dy="8" floodColor="#313a93" floodOpacity=".18" stdDeviation="7" />
-        </filter>
-      </defs>
-      <g filter={`url(#${shadowId})`}>
-        <path d="M37 61 25 23l42 23M143 61l12-38-42 23" fill="#596bf5" stroke="#343d99" strokeWidth="5" strokeLinejoin="round" />
-        <circle cx="90" cy="91" r="64" fill={`url(#${gradientId})`} stroke="#343d99" strokeWidth="5" />
-        <path d="m44 51-10-19 23 13m79 6 10-19-23 13" fill="#f4a7c1" />
-        <path d="M62 53c16-11 40-11 56 0" fill="none" stroke="#c2c8ff" strokeLinecap="round" strokeWidth="5" opacity=".5" />
-        <ellipse cx="68" cy="87" rx="8" ry={mood === "thinking" ? 4 : 10} fill="#25264d" />
-        <ellipse cx="112" cy="87" rx="8" ry={mood === "thinking" ? 4 : 10} fill="#25264d" />
-        <circle cx="65" cy="83" r="2" fill="white" opacity={mood === "thinking" ? 0 : 0.9} />
-        <circle cx="109" cy="83" r="2" fill="white" opacity={mood === "thinking" ? 0 : 0.9} />
-        <path d="m84 108 6 5 6-5" fill="#f4a7c1" stroke="#25264d" strokeWidth="4" strokeLinejoin="round" />
-        {mood === "happy" ? (
-          <path d="M72 116c8 14 28 14 36 0" fill="none" stroke="#25264d" strokeWidth="4" strokeLinecap="round" />
-        ) : (
-          <circle cx="90" cy="123" r="5" fill="#25264d" />
-        )}
-        <path d="M55 108 20 101m37 18-34 8m102-19 35-7m-37 18 34 8" stroke="#343d99" strokeWidth="4" strokeLinecap="round" />
-        <circle cx="49" cy="103" r="8" fill="#f4a7c1" opacity=".55" />
-        <circle cx="131" cy="103" r="8" fill="#f4a7c1" opacity=".55" />
+      {/* Ears outer */}
+      <path
+        d="M48 78C48 55 52 32 58 28c4-3 8 5 17 15ZM132 78C132 55 128 32 122 28c-4-3-8 5-17 15Z"
+        fill="#2b3044"
+        stroke="#1c2030"
+        strokeWidth="4"
+        strokeLinejoin="round"
+      />
+      {/* Ear inner colour — terracotta */}
+      <path
+        d="M55 74c0-16 3-28 6-30 2-1 5 4 11 12ZM125 74c0-16-3-28-6-30-2-1-5 4-11 12Z"
+        fill="#d97757"
+      />
+      {/* Head */}
+      <circle cx="90" cy="100" r="60" fill="#2b3044" stroke="#1c2030" strokeWidth="4" />
+      {/* Blush cheeks */}
+      <circle cx="57" cy="116" r="11" fill="#d97757" opacity="0.28" />
+      <circle cx="123" cy="116" r="11" fill="#d97757" opacity="0.28" />
+      {/* Eyes */}
+      <ellipse
+        cx="70"
+        cy="96"
+        rx="9"
+        ry={mood === "thinking" ? 5 : 11}
+        fill="#1b1f2e"
+      />
+      <ellipse
+        cx="110"
+        cy="96"
+        rx="9"
+        ry={mood === "thinking" ? 5 : 11}
+        fill="#1b1f2e"
+      />
+      {/* Dual glints */}
+      {mood !== "thinking" && (
+        <>
+          <circle cx="67" cy="92" r="2.5" fill="white" />
+          <circle cx="71" cy="98" r="1.2" fill="white" />
+          <circle cx="107" cy="92" r="2.5" fill="white" />
+          <circle cx="111" cy="98" r="1.2" fill="white" />
+        </>
+      )}
+      {/* Nose — terracotta */}
+      <path
+        d="M87.5 109c0-1.5 5-1.5 5 0 0 2-1.8 3.5-2.5 4-.7-.5-2.5-2-2.5-4Z"
+        fill="#c86d51"
+      />
+      {/* Mouth */}
+      {mood === "happy" ? (
+        <path
+          d="M90 113v3m-9 1c3 5 7 5 9 2m0 0c2 3 6 3 9-2"
+          fill="none"
+          stroke="#1b1f2e"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="3"
+        />
+      ) : (
+        <path
+          d="M83 119c4-3 10-3 14 0"
+          fill="none"
+          stroke="#1b1f2e"
+          strokeLinecap="round"
+          strokeWidth="3"
+        />
+      )}
+      {/* Whiskers */}
+      <g fill="none" stroke="#1b1f2e" strokeLinecap="round" strokeWidth="1.8" opacity="0.6">
+        <path d="M57 107C48 106 38 106 28 108M58 114C49 116 39 119 30 123" />
+        <path d="M123 107C132 106 142 106 152 108M122 114C131 116 141 119 150 123" />
       </g>
+      {/* Curled tail */}
+      <path
+        d="M130 148c18 2 26-8 22-20-3-8-12-10-16-5-3 4-1 10 5 9"
+        fill="none"
+        stroke="#2b3044"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="8"
+      />
     </svg>
   );
 }

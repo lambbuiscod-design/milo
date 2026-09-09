@@ -8,6 +8,7 @@ import {
   type BrowserWindow,
 } from "electron";
 import { registerDesktopIpc } from "./desktop-ipc";
+import { closeDatabase } from "./db";
 import { OverlayController } from "./overlay-controller";
 import {
   MILO_PROTOCOL_SCHEME,
@@ -164,3 +165,7 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on("window-all-closed", () => app.quit());
+
+app.on("will-quit", () => {
+  closeDatabase();
+});

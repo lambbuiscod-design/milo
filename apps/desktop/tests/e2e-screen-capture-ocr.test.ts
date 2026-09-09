@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DesktopSuggestionClient } from "../src/main/desktop-suggestion-client";
 import {
   MAX_CONTEXT_CHARACTERS,

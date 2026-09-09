@@ -30,7 +30,8 @@ function productionUrlIsValid(rawValue) {
     const url = new URL(rawValue);
     return (
       url.protocol === "https:" &&
-      !["localhost", "127.0.0.1", "::1"].includes(url.hostname) &&
+      !url.username && !url.password &&
+      !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) &&
       url.pathname === "/" &&
       !url.search &&
       !url.hash
@@ -43,7 +44,9 @@ function productionUrlIsValid(rawValue) {
 function supabaseUrlIsValid(rawValue) {
   try {
     const url = new URL(rawValue);
-    return url.protocol === "https:" && !["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+    return url.protocol === "https:" && !url.username && !url.password &&
+      url.pathname === "/" && !url.search && !url.hash &&
+      !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   } catch {
     return false;
   }
@@ -55,6 +58,7 @@ function desktopRedirectIsValid(rawValue) {
     const port = Number(url.port);
     return (
       url.protocol === "http:" &&
+      !url.username && !url.password &&
       url.hostname === "127.0.0.1" &&
       Number.isInteger(port) &&
       port >= 1024 &&
@@ -134,7 +138,8 @@ function main() {
     worktreeClean: worktreeState !== null && worktreeState === "",
   });
 
-  console.log(`[release-readiness] ${result.ready ? "READY" : "NOT READY"}`);
+  console.log(`[release-configuration] ${result.ready ? "CONFIGURED" : "NOT CONFIGURED"}`);
+  console.log("- This checks configuration only. Local verification, database tests, signing and real integration approval remain separate gates in docs/RELEASE.md.");
   for (const issue of result.issues) console.log(`- ${issue}`);
   if (!result.ready) {
     console.log("- Manual gates still required: production SMTP, Supabase callbacks, Stripe test lifecycle, legal review and HTTPS verification.");

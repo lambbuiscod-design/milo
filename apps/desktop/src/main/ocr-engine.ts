@@ -1,4 +1,3 @@
-/// <reference path="../types/tesseract.d.ts" />
 import { Buffer } from "node:buffer";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";

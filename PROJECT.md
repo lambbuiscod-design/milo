@@ -1,108 +1,80 @@
-# Project: Milo Screen Capture & Local OCR Integration
+# Project: Milo UI/UX Premium Overhaul
 
 ## Architecture
-- **Monorepo Structure**: Pnpm workspace managing `apps/desktop`, `apps/web`, and packages (`ai`, `contracts`, `security`, `test-fixtures`).
-- **Main Process Exclusivity**: Screen capture (`desktopCapturer`) and Local OCR (`tesseract.js` in Node `worker_threads.Worker`) execute strictly within the Electron Main Process.
-- **Renderer Security Invariant**: The desktop renderer BrowserWindow CSP strictly enforces `worker-src 'none'` and sandboxing. Raw window pixel buffers and raw OCR text NEVER cross IPC into the renderer.
-- **Content-Free UI Bridge**: The renderer sends content-free trigger signals (`askMilo({ mode: "screen_capture" })`) and receives only sanitized suggestion snapshots (`safe`, `confident`, `playful` reply cards).
-- **Data Flow**:
-  1. UI Trigger ("Screenshot" button in companion rail / "Suggest" button / `Ctrl+Shift+M`) -> IPC `milo:ask-milo`.
-  2. Main Process captures target window frame via `desktopCapturer.getSources({ types: ["window"] })`.
-  3. Window thumbnail converted in-memory to lossless PNG Buffer (`thumbnail.toPNG()`).
-  4. Local OCR (`DesktopOcrEngine` via Tesseract.js LSTM offline model) extracts text from Buffer.
-  5. Text normalized & bounded via `normalizeRecentContext()` (<=8 messages, <=4,000 characters).
-  6. `DesktopSuggestionClient.suggest()` generates 3 categorized replies (`safe`, `confident`, `playful`).
-  7. State transitions to `ready`; snapshot emitted via `milo:state-changed`; DaisyUI reply cards render in UI.
+- **Monorepo Structure**: Pnpm workspace managing `apps/desktop` (Electron + React), `apps/web` (Next.js + Tailwind + DaisyUI), and shared packages.
+- **Design System & Theme Tokens**:
+  - Electron Desktop: `apps/desktop/src/renderer/styles.css` defines warm ivory/sand background (`--surface`, `--surface-muted`), charcoal text (`--text-primary`, `--brand`), terracotta accents, and cat appearance color presets.
+  - Web Application: `apps/web/src/app/globals.css` defines DaisyUI `milo` and `milo-dark` theme tokens, `--shadow-color`, and `.premium-button`.
+- **Cat Mascot Invariants**:
+  - SVG dimensions: `viewBox="0 0 128 128"`, crisp at 168×174px desktop window and h-40/h-64 web sizes.
+  - States: idle, noticed, generating (3 pulsing dots), ready, paused, error.
+  - Presets: Charcoal (#2b3044, ear #d97757, nose #c86d51), Slate (#4a5568, ear #7b8fab, nose #6b7fa0), Mauve (#7c6b7e, ear #b8939b, nose #a8838b), Caramel (#8b6a3e, ear #c49a6c, nose #b58a5c). Strictly non-gendered.
+  - Accessibility: `role="img"`, `aria-label="Milo cat mascot"`.
+- **IPC & Persistence Flow**:
+  - Desktop settings: `updateSettings({ catAppearance })` -> validated via `updateSettingsSchema` in `validation.ts` -> persisted via `settings-store.ts` (`z.enum(["charcoal", "slate", "mauve", "caramel"]).default("charcoal")`) -> snapshot emitted -> `App.tsx` applies CSS variables on `document.documentElement.style`.
+  - Web settings: stored in `localStorage` under key `milo_cat_appearance`.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Window Candidate Enumeration & Chat Prioritization | Use `desktopCapturer.getSources` with 0x0 thumbnail in Main process; regex matching for WhatsApp and Discord titles; prioritize chat windows at top of candidates list | M1 | Survey / R1 |
-| 2 | On-Demand High-Res Window Capture | Capture high-resolution thumbnail (1920x1080) for selected window; convert to lossless PNG buffer; detect minimized/empty windows gracefully | M1 | Survey / R1 |
-| 3 | Local Offline OCR Engine (`DesktopOcrEngine`) | Tesseract.js v7 + offline integer-quantized LSTM model (`@tesseract.js-data/eng`); run in Node.js `worker_threads` in Main process; 100% offline | M2 | Survey / R2 |
-| 4 | Standard Test Fixture & Programmatic OCR Verification | High-contrast synthetic chat test fixture PNG; automated Vitest test asserting exact text extraction and bounds | M2 | Survey / R2, Acceptance Criteria |
-| 5 | Context Normalization & Suggestion Client Feeding | Normalize OCR text via `normalizeRecentContext` (max 8 messages, max 4,000 chars, participant redaction); feed into `DesktopSuggestionClient.suggest()` | M3 | Survey / R3 |
-| 6 | IPC Trigger & Preload Surface Integrity | Support screen capture triggering via `askMilo({ mode: "selected_window" | "screen_capture" })`; preserve 18-method allowlist and CSP `worker-src 'none'` | M3 | Survey / R3, Security |
-| 7 | UI Affordance & DaisyUI Reply Cards Display | Enable companion rail "Screenshot" button; wire to capture pipeline; display Safe, Confident, Playful reply cards with DaisyUI styling and copy feedback | M3 | Survey / R3, Acceptance Criteria |
-| 8 | E2E Testing Suite (Tiers 1-4) | Opaque-box test harness verifying window capture, OCR parsing, suggestion pipeline, boundary cases, and error handling | E2E / M4 | Survey / Acceptance Criteria |
-| 9 | Adversarial Hardening (Tier 5) | White-box stress testing, corrupted buffers, rapid triggers, missing models, oversized text, minimized windows | M4 | Survey / Acceptance Criteria |
+| 1 | Electron Cat Mascot Redesign | Softer curves, larger eyes with dual glints, attached curled tail, natural whiskers, 3 pulsing dots for generating state, viewBox 0 0 128 128, a11y preserved | M1 | Requirement R1 |
+| 2 | Cat Appearance Presets & Persistence | Charcoal, Slate, Mauve, Caramel presets in contracts.ts, settings-store.ts, validation.ts, App.tsx CSS injection, and 28x28px swatch buttons in settings panel; web localStorage | M1 | Requirement R2 |
+| 3 | Settings Store Persistence Unit Test | Add test asserting `catAppearance` roundtrip persistence and default value in settings store test suite | M1 | Requirement R2, R6 |
+| 4 | Electron UI Styles Refinement | Refine .cat-dock hover ring, compact .watching-pill state dots, .panel__header border, .reply-card 4px border accents & copy button, .popout-bubbles SparkIcon, focus rings, swatch styling, reduced motion | M2 | Requirement R3 |
+| 5 | Website Cat Mascot Upgrade | Align with desktop proportions (viewBox 0 0 128 128), warm charcoal body, terracotta ears & nose, white eye glints, happy & thinking moods, remove SSR-conflicting gradient IDs | M3 | Requirement R4 |
+| 6 | Website Design Polish | Update .premium-button shadows, site-header clean badge & remove rotate tilt, hero clean whitespace, coach-workspace replace hardcoded blues with CSS variables | M3 | Requirement R5 |
+| 7 | Full Verification, Security Audit & Build | Run desktop/web typecheck, vitest test suites, desktop security scan (AST check), and desktop production build | M4 | Requirement R6 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Screen Capture & Window Selection | `window-selection.ts`, `window-capturer.ts`, unit tests | None | DONE |
-| M2 | Local OCR Engine & Programmatic Test | `ocr-engine.ts`, `synthetic-chat-fixture.ts`, `ocr-engine.test.ts` | None | DONE |
-| M3 | Suggestion Pipeline Integration & UI Trigger | `desktop-ipc.ts`, `contracts.ts`, `validation.ts`, `App.tsx`, integration test | M1, M2 | DONE |
-| M4 | E2E Test Pass & Adversarial Hardening | Verification of 100% E2E tests (Tiers 1-4) and Tier 5 adversarial stress testing | M3, E2E | PLANNED |
+| M1 | Electron Cat Mascot & Appearance Presets | `MiloCat.tsx`, `contracts.ts`, `settings-store.ts`, `validation.ts`, `App.tsx`, `settings-store.test.ts` | None | DONE |
+| M2 | Electron UI Styles Refinement & Popout Bubbles | `styles.css`, `App.tsx`, `icons.tsx` | M1 | IN_PROGRESS |
+| M3 | Website Cat Mascot & Design Polish | `milo-cat.tsx`, `globals.css`, `site-header.tsx`, `page.tsx`, `coach-workspace.tsx` | None | PLANNED |
+| M4 | Comprehensive Verification, Security Audit & Build | `pnpm typecheck`, `pnpm test`, `desktop-security-check.mjs`, `pnpm build` | M1, M2, M3 | PLANNED |
 
 ## Interface Contracts
 
-### 1. `WindowCaptureService` (`apps/desktop/src/main/window-capturer.ts`)
+### 1. `CatAppearance` (`apps/desktop/src/shared/contracts.ts`)
 ```typescript
-export type ChatAppType = "whatsapp" | "discord" | "telegram" | "slack" | "other";
+export type CatAppearance = "charcoal" | "slate" | "mauve" | "caramel";
 
-export type CapturedWindowFrame = Readonly<{
-  sourceId: string;
-  title: string;
-  appType: ChatAppType;
-  imageBuffer: Buffer; // Lossless PNG
-  width: number;
-  height: number;
-  timestamp: number;
-}>;
-
-export interface DesktopCapturerApi {
-  getSources(options: Electron.SourcesOptions): Promise<Electron.DesktopCapturerSource[]>;
-}
-
-export class WindowCaptureError extends Error {
-  constructor(
-    readonly code: "WINDOW_NOT_FOUND" | "WINDOW_MINIMIZED" | "CAPTURE_FAILED",
-    message: string,
-  ) {
-    super(message);
-    this.name = "WindowCaptureError";
-  }
+export interface PublicSettings {
+  // ... existing fields
+  catAppearance?: CatAppearance;
 }
 ```
 
-### 2. `DesktopOcrEngine` (`apps/desktop/src/main/ocr-engine.ts`)
+### 2. Validation & Settings Store (`apps/desktop/src/shared/validation.ts` & `apps/desktop/src/main/settings-store.ts`)
 ```typescript
-export type OcrExtractionResult = Readonly<{
-  rawText: string;
-  normalizedText: string;
-  confidence: number;
-  durationMs: number;
-}>;
+// In validation.ts:
+catAppearance: z.enum(["charcoal", "slate", "mauve", "caramel"]).optional(),
 
-export interface DesktopOcrEngine {
-  initialize(): Promise<void>;
-  extractFromBuffer(imageBuffer: Buffer): Promise<OcrExtractionResult>;
-  terminate(): Promise<void>;
-}
+// In settings-store.ts:
+catAppearance: z.enum(["charcoal", "slate", "mauve", "caramel"]).default("charcoal"),
 ```
 
-### 3. IPC & Suggestion Feeding (`apps/desktop/src/shared/contracts.ts` & `desktop-ipc.ts`)
+### 3. CSS Variable Preset Map (`apps/desktop/src/renderer/App.tsx`)
 ```typescript
-export type AskMiloInput = Readonly<{
-  mode?: "selected_window" | "screen_capture";
-}>;
-
-// In desktop-ipc.ts:
-// Captured PNG Buffer -> DesktopOcrEngine.extractFromBuffer -> normalizeRecentContext -> suggestionClient.suggest({ messages })
+const APPEARANCE_PRESETS: Record<CatAppearance, { cat: string; ear: string; nose: string }> = {
+  charcoal: { cat: "#2b3044", ear: "#d97757", nose: "#c86d51" },
+  slate: { cat: "#4a5568", ear: "#7b8fab", nose: "#6b7fa0" },
+  mauve: { cat: "#7c6b7e", ear: "#b8939b", nose: "#a8838b" },
+  caramel: { cat: "#8b6a3e", ear: "#c49a6c", nose: "#b58a5c" },
+};
 ```
 
 ## Code Layout
-- `apps/desktop/src/main/window-selection.ts` — Window candidate enumeration & chat application prioritization (DONE)
-- `apps/desktop/src/main/window-capturer.ts` — Window capture service using `desktopCapturer` (DONE)
-- `apps/desktop/src/main/ocr-engine.ts` — Local OCR engine using Tesseract.js and offline LSTM model (DONE)
-- `apps/desktop/src/main/desktop-ipc.ts` — IPC orchestration connecting capture, OCR, normalization, and `DesktopSuggestionClient` (DONE)
-- `apps/desktop/src/shared/contracts.ts` — Shared IPC contracts and preload allowlist (DONE)
-- `apps/desktop/src/shared/validation.ts` — Zod input validation schemas (.strict()) (DONE)
-- `apps/desktop/src/renderer/App.tsx` — Desktop UI with Screenshot button trigger and 3 reply cards (DONE)
-- `packages/test-fixtures/src/synthetic-chat-fixture.ts` — Standard synthetic chat image fixture (DONE)
-- `apps/desktop/tests/window-selection.test.ts` — Window selection & priority unit tests (DONE)
-- `apps/desktop/tests/window-capturer.test.ts` — Window capture unit tests (DONE)
-- `apps/desktop/tests/ocr-engine.test.ts` — Programmatic OCR test suite (DONE)
-- `apps/desktop/tests/screen-capture-suggestion.test.ts` — Suggestion client integration tests (DONE)
-- `apps/desktop/tests/e2e-screen-capture-ocr.test.ts` — 39-test comprehensive E2E test suite (DONE)
+- `apps/desktop/src/renderer/MiloCat.tsx` — Electron Cat Mascot SVG with 6 states and pulsing thinking dots (DONE)
+- `apps/desktop/src/shared/contracts.ts` — Shared types including `CatAppearance` and `PublicSettings` (DONE)
+- `apps/desktop/src/shared/validation.ts` — Settings update schema validation (DONE)
+- `apps/desktop/src/main/settings-store.ts` — Electron settings persistence with zod schema and `getPublicSettings()` (DONE)
+- `apps/desktop/src/renderer/App.tsx` — Desktop UI with appearance CSS injector, swatch buttons, and popout bubbles (DONE)
+- `apps/desktop/src/renderer/styles.css` — Electron CSS styling for cat dock, watching pill, reply cards, swatches, focus rings (M2)
+- `apps/desktop/src/renderer/icons.tsx` — Icon definitions including SparkIcon (M2)
+- `apps/desktop/tests/settings-store.test.ts` — Settings store unit tests including `catAppearance` persistence (DONE)
+- `apps/web/src/components/milo-cat.tsx` — Website Cat Mascot SVG (happy & thinking moods) (M3)
+- `apps/web/src/app/globals.css` — Web styles and premium button shadows (M3)
+- `apps/web/src/components/site-header.tsx` — Header component with redesigned cat and clean badge (M3)
+- `apps/web/src/app/page.tsx` — Landing page with hero cat display and refined whitespace (M3)
+- `apps/web/src/components/coach-workspace.tsx` — Dashboard workspace with tokenized CSS variables (M3)

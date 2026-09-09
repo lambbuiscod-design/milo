@@ -38,6 +38,7 @@ const persistedSettingsSchema = z
     opacity: z.number().min(0.75).max(1).default(1.0),
     isPinned: z.boolean().default(true),
     dockMode: z.enum(["free", "top-left", "top-right", "bottom-left", "bottom-right", "follow-window"]).default("follow-window"),
+    catAppearance: z.enum(["charcoal", "slate", "mauve", "caramel"]).default("charcoal"),
     paused: z.boolean(),
     overlayPositions: positionsSchema,
   })
@@ -57,6 +58,7 @@ const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
   opacity: 1.0,
   isPinned: true,
   dockMode: "follow-window",
+  catAppearance: "charcoal",
   paused: false,
   overlayPositions: Object.freeze({}),
 });
@@ -84,6 +86,7 @@ export class ContentFreeSettingsStore {
       opacity: this.#settings.opacity,
       isPinned: this.#settings.isPinned,
       dockMode: this.#settings.dockMode,
+      catAppearance: this.#settings.catAppearance,
     };
   }
 

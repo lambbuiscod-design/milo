@@ -8,8 +8,6 @@ import {
 } from "../src/main/overlay-controller";
 import { registerDesktopIpc } from "../src/main/desktop-ipc";
 import {
-  DEFAULT_SUGGESTION_HOTKEY,
-  registerSuggestionHotkey,
   type GlobalShortcutAdapter,
 } from "../src/main/suggestion-hotkey";
 import {
@@ -23,18 +21,18 @@ import { WindowCaptureService } from "../src/main/window-capturer";
 import type { DesktopOcrEngineApi } from "../src/main/ocr-engine";
 import { IPC_CHANNELS, type PanelPlacement } from "../src/shared/contracts";
 
-const registeredIpcHandlers = new Map<string, (event: any, payload: unknown) => Promise<unknown>>();
+const registeredIpcHandlers = new Map<string, (event: unknown, payload: unknown) => Promise<unknown>>();
 const clipboardWritten: Array<{ text: string; type?: string }> = [];
-let mockSources: Array<{ id: string; name: string; thumbnail: any }> = [];
+let mockSources: Array<{ id: string; name: string; thumbnail: Pick<Electron.NativeImage, "isEmpty" | "getSize" | "toPNG"> }> = [];
 
 vi.mock("electron", () => {
   class MockBrowserWindow {
-    options: any;
+    options: Electron.BrowserWindowConstructorOptions;
     bounds: Rectangle = { x: 100, y: 100, width: 168, height: 174 };
     focusable: boolean;
-    listeners: Record<string, Function[]> = {};
+    listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
 
-    constructor(options: any) {
+    constructor(options: Electron.BrowserWindowConstructorOptions) {
       this.options = options;
       this.focusable = options.focusable ?? true;
     }
@@ -57,11 +55,11 @@ vi.mock("electron", () => {
       send: vi.fn(),
       mainFrame: { url: "milo://app/index.html", isDestroyed: () => false },
     };
-    on = (event: string, cb: Function) => {
+    on = (event: string, cb: (...args: unknown[]) => void) => {
       this.listeners[event] = this.listeners[event] || [];
       this.listeners[event].push(cb);
     };
-    removeListener = (event: string, cb: Function) => {
+    removeListener = (event: string, cb: (...args: unknown[]) => void) => {
       if (!this.listeners[event]) return;
       this.listeners[event] = this.listeners[event].filter((f) => f !== cb);
     };
@@ -82,7 +80,7 @@ vi.mock("electron", () => {
       removeListener: vi.fn(),
     },
     ipcMain: {
-      handle: vi.fn((channel: string, handler: (event: any, payload: unknown) => Promise<unknown>) => {
+      handle: vi.fn((channel: string, handler: (event: unknown, payload: unknown) => Promise<unknown>) => {
         registeredIpcHandlers.set(channel, handler);
       }),
       removeHandler: vi.fn((channel: string) => {
@@ -144,7 +142,7 @@ function createMockSettingsStore(initialPaused = false) {
 
 describe("Adversarial Challenge: Focus-Stealing & Window Creation Invariants", () => {
   it("verifies createOverlayWindow specifies focusable: false (Win32 WS_EX_NOACTIVATE)", () => {
-    const win = createOverlayWindow("fake/preload/path.js") as any;
+    const win = createOverlayWindow("fake/preload/path.js") as Electron.BrowserWindow & { options: Electron.BrowserWindowConstructorOptions };
     expect(win.options.focusable).toBe(false);
     expect(win.options.transparent).toBe(true);
     expect(win.options.frame).toBe(false);
@@ -154,9 +152,9 @@ describe("Adversarial Challenge: Focus-Stealing & Window Creation Invariants", (
   });
 
   it("verifies focusable transitions: false by default, true ONLY when panel is open, false when closed", () => {
-    const win = createOverlayWindow("fake/preload/path.js") as any;
+    const win = createOverlayWindow("fake/preload/path.js") as Electron.BrowserWindow & { options: Electron.BrowserWindowConstructorOptions };
     const settings = createMockSettingsStore();
-    const controller = new OverlayController(win, settings as any);
+    const controller = new OverlayController(win, settings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"]);
     controller.initialize();
 
     // Initial state: not focusable
@@ -190,9 +188,9 @@ describe("Adversarial Challenge: Focus-Stealing & Window Creation Invariants", (
 
 describe("Adversarial Challenge: Geometry & Anchor Stability across Pop-Out Bubbles Lifecycle", () => {
   it("preserves exact anchor coordinate across Collapsed -> Bubbles -> Panel -> Collapsed transitions", () => {
-    const win = createOverlayWindow("fake/preload/path.js") as any;
+    const win = createOverlayWindow("fake/preload/path.js") as Electron.BrowserWindow & { options: Electron.BrowserWindowConstructorOptions };
     const settings = createMockSettingsStore();
-    const controller = new OverlayController(win, settings as any);
+    const controller = new OverlayController(win, settings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"]);
     controller.initialize();
 
     const initialBounds = win.getBounds();
@@ -300,13 +298,13 @@ describe("Adversarial Challenge: Concurrency & Rapid Hotkey Triggers", () => {
     let maxConcurrent = 0;
     let totalSuggestionsCompleted = 0;
 
-    const mockWindow = createOverlayWindow("fake/preload.js") as any;
+    const mockWindow = createOverlayWindow("fake/preload.js") as Electron.BrowserWindow & { options: Electron.BrowserWindowConstructorOptions };
     const mockSettings = createMockSettingsStore();
-    const mockOverlay = new OverlayController(mockWindow, mockSettings as any);
+    const mockOverlay = new OverlayController(mockWindow, mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"]);
     mockOverlay.initialize();
 
     const mockCapturer: DesktopCapturerApi = {
-      getSources: vi.fn(async () => mockSources as any),
+      getSources: vi.fn(async () => mockSources as unknown as Electron.DesktopCapturerSource[]),
     };
     const captureService = new WindowCaptureService(mockCapturer);
 
@@ -363,10 +361,10 @@ describe("Adversarial Challenge: Concurrency & Rapid Hotkey Triggers", () => {
     const dispose = registerDesktopIpc({
       window: mockWindow,
       overlay: mockOverlay,
-      settingsStore: mockSettings as any,
-      nativeHelper: mockNativeHelper as any,
-      authSession: mockAuthSession as any,
-      suggestionClient: mockSuggestionClient as any,
+      settingsStore: mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"],
+      nativeHelper: mockNativeHelper as unknown as Parameters<typeof registerDesktopIpc>[0]["nativeHelper"],
+      authSession: mockAuthSession as unknown as Parameters<typeof registerDesktopIpc>[0]["authSession"],
+      suggestionClient: mockSuggestionClient as unknown as Parameters<typeof registerDesktopIpc>[0]["suggestionClient"],
       accountOpener: vi.fn(),
       windowCaptureService: captureService,
       ocrEngine: mockOcrEngine,
@@ -374,6 +372,11 @@ describe("Adversarial Challenge: Concurrency & Rapid Hotkey Triggers", () => {
     });
 
     expect(hotkeyCallback).not.toBeNull();
+
+    await registeredIpcHandlers.get("milo:select-window")!({
+      sender: mockWindow.webContents,
+      senderFrame: mockWindow.webContents.mainFrame,
+    }, { sourceId: "window:1234:0" });
 
     // Fire 50 rapid hotkey triggers simultaneously
     const triggers = Array.from({ length: 50 }, () => hotkeyCallback!());
@@ -411,9 +414,9 @@ describe("Adversarial Challenge: Concurrency & Rapid Hotkey Triggers", () => {
       unregister: vi.fn(),
     };
 
-    const mockWindow = createOverlayWindow("fake/preload.js") as any;
+    const mockWindow = createOverlayWindow("fake/preload.js") as Electron.BrowserWindow & { options: Electron.BrowserWindowConstructorOptions };
     const mockSettings = createMockSettingsStore();
-    const mockOverlay = new OverlayController(mockWindow, mockSettings as any);
+    const mockOverlay = new OverlayController(mockWindow, mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"]);
     mockOverlay.initialize();
 
     const mockCapturer: DesktopCapturerApi = {
@@ -424,17 +427,17 @@ describe("Adversarial Challenge: Concurrency & Rapid Hotkey Triggers", () => {
     const dispose = registerDesktopIpc({
       window: mockWindow,
       overlay: mockOverlay,
-      settingsStore: mockSettings as any,
-      nativeHelper: { listWindows: vi.fn(async () => []), suspend: vi.fn() } as any,
-      authSession: { getAccessToken: vi.fn(), getSnapshot: vi.fn() } as any,
-      suggestionClient: { suggest: vi.fn() } as any,
+      settingsStore: mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"],
+      nativeHelper: { listWindows: vi.fn(async () => []), suspend: vi.fn() } as unknown as Parameters<typeof registerDesktopIpc>[0]["nativeHelper"],
+      authSession: { getAccessToken: vi.fn(), getSnapshot: vi.fn() } as unknown as Parameters<typeof registerDesktopIpc>[0]["authSession"],
+      suggestionClient: { suggest: vi.fn() } as unknown as Parameters<typeof registerDesktopIpc>[0]["suggestionClient"],
       accountOpener: vi.fn(),
       windowCaptureService: captureService,
       ocrEngine: {
         initialize: () => Promise.resolve(),
         extractFromBuffer: () => Promise.resolve({ rawText: "", normalizedText: "", confidence: 0, durationMs: 0 }),
         terminate: () => Promise.resolve(),
-      } as any,
+      } as Parameters<typeof registerDesktopIpc>[0]["ocrEngine"],
       shortcutApi: shortcutAdapter,
     });
 
@@ -461,29 +464,29 @@ describe("Adversarial Challenge: Concurrency & Rapid Hotkey Triggers", () => {
       unregister: vi.fn(),
     };
 
-    const mockWindow = createOverlayWindow("fake/preload.js") as any;
+    const mockWindow = createOverlayWindow("fake/preload.js") as Electron.BrowserWindow & { options: Electron.BrowserWindowConstructorOptions };
     const mockSettings = createMockSettingsStore(true); // Paused
-    const mockOverlay = new OverlayController(mockWindow, mockSettings as any);
+    const mockOverlay = new OverlayController(mockWindow, mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"]);
     mockOverlay.initialize();
 
     const mockCapturer: DesktopCapturerApi = {
-      getSources: vi.fn(async () => mockSources as any),
+      getSources: vi.fn(async () => mockSources as unknown as Electron.DesktopCapturerSource[]),
     };
 
     const dispose = registerDesktopIpc({
       window: mockWindow,
       overlay: mockOverlay,
-      settingsStore: mockSettings as any,
-      nativeHelper: { listWindows: vi.fn(async () => []), suspend: vi.fn() } as any,
-      authSession: { getAccessToken: vi.fn(), getSnapshot: vi.fn() } as any,
-      suggestionClient: { suggest: vi.fn() } as any,
+      settingsStore: mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"],
+      nativeHelper: { listWindows: vi.fn(async () => []), suspend: vi.fn() } as unknown as Parameters<typeof registerDesktopIpc>[0]["nativeHelper"],
+      authSession: { getAccessToken: vi.fn(), getSnapshot: vi.fn() } as unknown as Parameters<typeof registerDesktopIpc>[0]["authSession"],
+      suggestionClient: { suggest: vi.fn() } as unknown as Parameters<typeof registerDesktopIpc>[0]["suggestionClient"],
       accountOpener: vi.fn(),
       windowCaptureService: new WindowCaptureService(mockCapturer),
       ocrEngine: {
         initialize: () => Promise.resolve(),
         extractFromBuffer: () => Promise.resolve({ rawText: "", normalizedText: "", confidence: 0, durationMs: 0 }),
         terminate: () => Promise.resolve(),
-      } as any,
+      } as Parameters<typeof registerDesktopIpc>[0]["ocrEngine"],
       shortcutApi: shortcutAdapter,
     });
 
@@ -504,9 +507,9 @@ describe("Adversarial Challenge: Copy-and-Close Behavior & Focus Preservation", 
   });
 
   it("verifies copyReply writes to system clipboard, collapses bubbles, and keeps window non-focusable", async () => {
-    const mockWindow = createOverlayWindow("fake/preload.js") as any;
+    const mockWindow = createOverlayWindow("fake/preload.js") as Electron.BrowserWindow & { options: Electron.BrowserWindowConstructorOptions };
     const mockSettings = createMockSettingsStore();
-    const mockOverlay = new OverlayController(mockWindow, mockSettings as any);
+    const mockOverlay = new OverlayController(mockWindow, mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"]);
     mockOverlay.initialize();
 
     // Start with bubbles open
@@ -517,12 +520,12 @@ describe("Adversarial Challenge: Copy-and-Close Behavior & Focus Preservation", 
     const dispose = registerDesktopIpc({
       window: mockWindow,
       overlay: mockOverlay,
-      settingsStore: mockSettings as any,
-      nativeHelper: { listWindows: vi.fn(async () => []), suspend: vi.fn() } as any,
+      settingsStore: mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"],
+      nativeHelper: { listWindows: vi.fn(async () => []), suspend: vi.fn() } as unknown as Parameters<typeof registerDesktopIpc>[0]["nativeHelper"],
       authSession: {
         getAccessToken: vi.fn(async () => "token"),
         getSnapshot: vi.fn(() => ({ status: "authenticated", expiresAt: null, storageAvailable: true })),
-      } as any,
+      } as unknown as Parameters<typeof registerDesktopIpc>[0]["authSession"],
       suggestionClient: null,
       accountOpener: vi.fn(),
       shortcutApi: { register: vi.fn(() => true), unregister: vi.fn() },
@@ -539,10 +542,7 @@ describe("Adversarial Challenge: Copy-and-Close Behavior & Focus Preservation", 
         isDestroyed: () => false,
       },
     };
-    mockWindow.webContents.id = 1;
-    (fakeSenderEvent.sender as any).id = 1;
-    (fakeSenderEvent.sender as any).isDestroyed = () => false;
-    (fakeSenderEvent.sender as any).mainFrame = fakeSenderEvent.senderFrame;
+    Object.assign(fakeSenderEvent.sender, { mainFrame: fakeSenderEvent.senderFrame });
 
     await previewHandler!(fakeSenderEvent, "generate");
 
@@ -553,7 +553,7 @@ describe("Adversarial Challenge: Copy-and-Close Behavior & Focus Preservation", 
     const copyHandler = registeredIpcHandlers.get(IPC_CHANNELS.copyReply);
     expect(copyHandler).toBeDefined();
 
-    const copyResult: any = await copyHandler!(fakeSenderEvent, { suggestionId: "safe" });
+    const copyResult = await copyHandler!(fakeSenderEvent, { suggestionId: "safe" }) as import("../src/shared/contracts").IpcResult<void>;
     expect(copyResult.ok).toBe(true);
 
     // Clipboard writeText was invoked

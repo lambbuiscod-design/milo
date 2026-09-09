@@ -3,7 +3,7 @@ name: CodeQL
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "codex/milo-release"]
   schedule:
     - cron: "41 4 * * 3"
   workflow_dispatch:

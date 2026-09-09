@@ -8,29 +8,31 @@ on:
       - "apps/desktop/**"
       - "e2e/desktop/**"
       - "global.json"
+      - "scripts/verify-release.mjs"
       - "native/windows/**"
       - "package.json"
       - "packages/**"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "scripts/desktop-*.mjs"
-      - "scripts/native-live-smoke.mjs"
+      - "scripts/native-*.mjs"
       - "scripts/test-chat-fixture.mjs"
   push:
-    branches: [main]
+    branches: [main, "codex/milo-release"]
     paths:
       - ".github/workflows/desktop.yml"
       - ".node-version"
       - "apps/desktop/**"
       - "e2e/desktop/**"
       - "global.json"
+      - "scripts/verify-release.mjs"
       - "native/windows/**"
       - "package.json"
       - "packages/**"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "scripts/desktop-*.mjs"
-      - "scripts/native-live-smoke.mjs"
+      - "scripts/native-*.mjs"
       - "scripts/test-chat-fixture.mjs"
   workflow_dispatch:
 
@@ -105,11 +107,14 @@ jobs:
           e2e/desktop/source-security.contract.test.mjs
           e2e/desktop/workflow.contract.test.mjs
 
-      - name: Build native Windows helper
-        run: dotnet build native/windows/Milo.Native.Windows.csproj --configuration Release
+      - name: Build locked native helper and synthetic fixture
+        run: pnpm native:build
 
-      - name: Build synthetic Windows chat fixture
-        run: dotnet build native/windows/Milo.TestChat/Milo.TestChat.csproj --configuration Release
+      - name: Publish self-contained helper
+        run: pnpm native:publish
+
+      - name: Test compiled native protocol
+        run: pnpm test:native:protocol
 
       - name: Verify synthetic fixture privacy contract
         run: node scripts/test-chat-fixture.mjs

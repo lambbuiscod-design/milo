@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  CAT_APPEARANCES,
   CONTEXT_PREVIEW_MESSAGE_LIMITS,
   TONE_PROFILE_METADATA,
+  type CatAppearance,
   type ContextPreview,
   type ContextPreviewInput,
   type DesktopSnapshot,
@@ -26,7 +28,6 @@ import {
   MessageIcon,
   MoreIcon,
   PauseIcon,
-  PinIcon,
   PlayIcon,
   ResetIcon,
   SendIcon,
@@ -34,11 +35,20 @@ import {
   ShieldIcon,
   SparkIcon,
   VolumeIcon,
-  VolumeMuteIcon,
   WindowIcon,
 } from "./icons";
 import { MiloCat } from "./MiloCat";
 import { sound } from "./audio";
+
+export const CAT_APPEARANCE_PRESETS: Record<
+  CatAppearance,
+  { label: string; cat: string; ear: string; nose: string; badge: string }
+> = {
+  charcoal: { label: "Charcoal", cat: "#2b3044", ear: "#d97757", nose: "#c86d51", badge: "#d97757" },
+  slate: { label: "Slate", cat: "#4a5568", ear: "#7b8fab", nose: "#6b7fa0", badge: "#7b8fab" },
+  mauve: { label: "Mauve", cat: "#7c6b7e", ear: "#b8939b", nose: "#a8838b", badge: "#b8939b" },
+  caramel: { label: "Caramel", cat: "#8b6a3e", ear: "#c49a6c", nose: "#b58a5c", badge: "#c49a6c" },
+};
 
 const INITIAL_SNAPSHOT: DesktopSnapshot = {
   state: "idle",
@@ -65,6 +75,7 @@ const INITIAL_SNAPSHOT: DesktopSnapshot = {
     opacity: 1.0,
     isPinned: true,
     dockMode: "follow-window",
+    catAppearance: "charcoal",
   },
   replies: [],
   lastAction: "none",
@@ -112,7 +123,9 @@ export function PopoutBubbles({
     >
       <div className="popout-bubbles__header">
         <div className="popout-bubbles__meta">
-          <span className="popout-bubbles__spark" aria-hidden="true">✨</span>
+          <span className="popout-bubbles__spark" aria-hidden="true">
+            <SparkIcon className="popout-bubbles__spark-icon" />
+          </span>
           <span className="popout-bubbles__title">Milo suggestions</span>
         </div>
         {onClose && (
@@ -200,13 +213,8 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
   const panelWasOpenRef = useRef(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copiedSuggestion, setCopiedSuggestion] = useState<"safe" | "confident" | "playful" | null>(null);
-  const [bubblesVisible, setBubblesVisible] = useState(true);
-
-  useEffect(() => {
-    if (snapshot.replies.length > 0) {
-      setBubblesVisible(true);
-    }
-  }, [snapshot.replies]);
+  const [dismissedReplies, setDismissedReplies] = useState<readonly SyntheticSuggestion[] | null>(null);
+  const bubblesVisible = snapshot.replies !== dismissedReplies;
 
   const stateCopy = STATE_COPY[snapshot.state];
   const selectedWindowTitle = snapshot.watching.selectedWindow?.title;
@@ -259,6 +267,17 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
       motionQuery.removeEventListener("change", applyPreferences);
     };
   }, [snapshot.settings.motion, snapshot.settings.theme]);
+
+  useEffect(() => {
+    const appearance = snapshot.settings.catAppearance ?? "charcoal";
+    const preset = CAT_APPEARANCE_PRESETS[appearance] ?? CAT_APPEARANCE_PRESETS.charcoal;
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty("--cat", preset.cat);
+    rootStyle.setProperty("--cat-ear", preset.ear);
+    rootStyle.setProperty("--cat-nose", preset.nose);
+    rootStyle.setProperty("--cat-badge", preset.badge);
+    document.documentElement.dataset.catAppearance = appearance;
+  }, [snapshot.settings.catAppearance]);
 
   useEffect(() => {
     sound.setConfig(
@@ -467,12 +486,12 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
   };
 
   const handleBubbleCopy = async (suggestionId: "safe" | "confident" | "playful") => {
-    setBubblesVisible(false);
+    setDismissedReplies(snapshot.replies);
     await copyReply(suggestionId);
   };
 
   const handleBubbleDismiss = () => {
-    setBubblesVisible(false);
+    setDismissedReplies(snapshot.replies);
     void window.milo.setPanelOpen(false);
   };
 
@@ -1019,6 +1038,38 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
 
                   <div className="settings-block">
                     <h3 className="settings-block__title">Display &amp; Appearance</h3>
+                    <div className="cat-appearance-section" style={{ marginBottom: "12px" }}>
+                      <span className="settings-label" style={{ display: "block", marginBottom: "6px" }}>
+                        Mascot Appearance
+                      </span>
+                      <div
+                        className="cat-swatches"
+                        role="radiogroup"
+                        aria-label="Mascot appearance presets"
+                        style={{ display: "flex", gap: "10px", alignItems: "center" }}
+                      >
+                        {CAT_APPEARANCES.map((preset) => {
+                          const isSelected = (snapshot.settings.catAppearance ?? "charcoal") === preset;
+                          const config = CAT_APPEARANCE_PRESETS[preset];
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              aria-label={`${config.label} appearance`}
+                              title={`${config.label} appearance`}
+                              className={`cat-swatch cat-swatch--${preset} ${isSelected ? "cat-swatch--selected" : ""}`}
+                              style={{ backgroundColor: config.cat }}
+                              onClick={() => {
+                                sound.playClick();
+                                void updateSettings({ catAppearance: preset });
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
                     <label>
                       <span>Theme</span>
                       <select

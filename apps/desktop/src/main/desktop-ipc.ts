@@ -121,9 +121,9 @@ export function registerDesktopIpc({
     watching: watching(),
     settings: settingsStore.getPublicSettings(),
     auth: authSession?.getSnapshot() ?? {
-      status: "authenticated",
+      status: "unavailable",
       expiresAt: null,
-      storageAvailable: true,
+      storageAvailable: false,
     },
     replies,
     lastAction,
@@ -258,6 +258,18 @@ export function registerDesktopIpc({
     };
   };
 
+  const readCapturedText = async (sourceId: string): Promise<string> => {
+    const frame = await windowCaptureService.captureWindow(sourceId);
+    try {
+      return (await ocrEngine.extractFromBuffer(frame.imageBuffer)).rawText;
+    } finally {
+      frame.imageBuffer.fill(0);
+    }
+  };
+
+  // Pause, logout and window changes can mutate this state while awaiting I/O.
+  const generationIsActive = (epoch: number): boolean => epoch === generationEpoch && state !== "paused";
+
   const runLiveSuggestion = async (options?: { forceOcr?: boolean }): Promise<SuggestionResponse> => {
     if (state === "paused" || selectedWindow === null) {
       throw new UnavailableError();
@@ -285,9 +297,7 @@ export function registerDesktopIpc({
 
       let rawText = "";
       if (options?.forceOcr) {
-        const capturedFrame = await windowCaptureService.captureWindow(selectedWindow.sourceId);
-        const ocrResult = await ocrEngine.extractFromBuffer(capturedFrame.imageBuffer);
-        rawText = ocrResult.rawText;
+        rawText = await readCapturedText(currentWindow.sourceId);
       } else {
         if (currentWindow.nativeIdentity !== null) {
           try {
@@ -295,17 +305,13 @@ export function registerDesktopIpc({
             rawText = extracted.text;
           } catch (localError) {
             try {
-              const capturedFrame = await windowCaptureService.captureWindow(selectedWindow.sourceId);
-              const ocrResult = await ocrEngine.extractFromBuffer(capturedFrame.imageBuffer);
-              rawText = ocrResult.rawText;
+              rawText = await readCapturedText(currentWindow.sourceId);
             } catch {
               throw localError;
             }
           }
         } else {
-          const capturedFrame = await windowCaptureService.captureWindow(selectedWindow.sourceId);
-          const ocrResult = await ocrEngine.extractFromBuffer(capturedFrame.imageBuffer);
-          rawText = ocrResult.rawText;
+          rawText = await readCapturedText(currentWindow.sourceId);
         }
       }
 
@@ -314,54 +320,24 @@ export function registerDesktopIpc({
         throw new UnavailableError();
       }
       const currentTone = settingsStore.getPublicSettings().activeTone ?? "standard";
-      let generatedReplies: SyntheticSuggestion[] = [];
+      if (!generationIsActive(epoch)) throw new UnavailableError();
+      if (authSession === null || suggestionClient === null) throw new UnavailableError();
+      const accessToken = await authSession.getAccessToken();
+      if (!generationIsActive(epoch)) throw new UnavailableError();
+      const generated = await suggestionClient.suggest({
+        accessToken,
+        messages: context.text.split("\n").map((text) => ({ role: "unknown" as const, text })),
+        tone: currentTone,
+        relationshipStage: "dating",
+      });
+      const generatedReplies: SyntheticSuggestion[] = generated.replies.map((reply) => ({
+        id: reply.category,
+        label: `${reply.category[0]?.toUpperCase() ?? ""}${reply.category.slice(1)} choice`,
+        text: reply.text,
+        explanation: reply.whyItWorks,
+      }));
 
-      if (authSession !== null && suggestionClient !== null) {
-        try {
-          const accessToken = await authSession.getAccessToken();
-          const generated = await suggestionClient.suggest({
-            accessToken,
-            messages: context.text.split("\n").map((text) => ({ role: "unknown" as const, text })),
-            tone: currentTone,
-            relationshipStage: "dating",
-          });
-          generatedReplies = generated.replies.map((reply) => ({
-            id: reply.category,
-            label: `${reply.category[0]?.toUpperCase() ?? ""}${reply.category.slice(1)} choice`,
-            text: reply.text,
-            explanation: reply.whyItWorks,
-          }));
-        } catch {
-          // Fall back to local contextual replies below
-        }
-      }
-
-      if (generatedReplies.length === 0) {
-        const lastSnippet = context.text.trim().split("\n").pop() || "";
-        const cleanContext = lastSnippet.slice(0, 45);
-        generatedReplies = [
-          {
-            id: "safe",
-            label: "Safe choice",
-            text: "Sounds good to me, let's keep it simple.",
-            explanation: cleanContext ? `Direct reply to: "${cleanContext}"` : "Low pressure, polite, and leaves the door open.",
-          },
-          {
-            id: "confident",
-            label: "Confident choice",
-            text: "I'm definitely down. Let's make it happen!",
-            explanation: "Clear, decisive, and shows positive intent.",
-          },
-          {
-            id: "playful",
-            label: "Playful choice",
-            text: "Only if there's dessert involved 😉 What's the plan?",
-            explanation: "Adds light humor without complicating plans.",
-          },
-        ];
-      }
-
-      if (epoch !== generationEpoch || state === "paused") throw new UnavailableError();
+      if (!generationIsActive(epoch)) throw new UnavailableError();
 
       replies = generatedReplies;
       state = transitionDesktopState(state, "ready");
@@ -369,7 +345,7 @@ export function registerDesktopIpc({
         overlay.setBubblesOpen(true);
       }
       publish();
-      return { mode: "live", warning: null, replies };
+      return { mode: "live", warning: generated.warning, replies };
     } catch (error) {
       if (epoch === generationEpoch && state !== "paused") {
         replies = [];
@@ -648,21 +624,8 @@ export function registerDesktopIpc({
 
   const disposeSuggestionHotkey = registerSuggestionHotkey(shortcutApi ?? globalShortcut, async () => {
     if (state === "paused") throw new UnavailableError();
-    if (selectedWindow === null) {
-      const candidates = await enumerateWindowCandidates();
-      if (candidates.length > 0 && candidates[0]) {
-        const fresh = selectFreshWindow(candidates[0].sourceId, candidates);
-        if (fresh !== null) {
-          const nativeSelected = bindNativeWindowIdentity(
-            fresh,
-            await nativeHelper.listWindows().catch(() => []),
-          );
-          selectedWindow = nativeSelected ?? fresh;
-        }
-      }
-    }
     if (selectedWindow === null) throw new UnavailableError();
-    await runLiveSuggestion({ forceOcr: true }).catch(() => undefined);
+    await runLiveSuggestion();
   });
 
   return () => {

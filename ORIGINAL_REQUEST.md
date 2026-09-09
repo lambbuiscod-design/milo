@@ -87,3 +87,178 @@ Clicking a pop-out suggestion bubble must instantly copy the text to the system 
 ### Functional Verification
 - [ ] Pressing `Alt+S` while focused on another app (e.g., Notepad) successfully triggers the Milo capture and generation pipeline.
 - [ ] Clicking a generated speech bubble copies its content to the clipboard and closes the bubbles without stealing system focus away from the user's original app.
+
+## 2026-09-07T13:02:53Z
+
+# Milo UI/UX Premium Overhaul
+
+Upgrade Milo's website, Electron desktop interface, and cat mascot into a beautiful, classic, clean consumer product. This task is UI/UX only. Work from the CURRENT repository. Preserve all working functionality and the existing architecture. Do not restart the project or change any auth, billing, AI, database, or security logic.
+
+Working directory: C:\Users\abdul\Desktop\Buisness codex\milo
+Integrity mode: development
+
+## DESIGN DIRECTION
+
+Milo should feel carefully designed, calm, welcoming, and premium.
+
+Use:
+- Warm ivory backgrounds, charcoal text, and restrained accent colors.
+- Clean typography, generous spacing, subtle borders, and soft shadows.
+- Consistent buttons, inputs, cards, icons, and corner radii.
+- A readable sans-serif for application controls.
+- An optional elegant serif for a few website headlines.
+- Proper light and dark themes.
+
+Avoid:
+- Generic AI-dashboard styling.
+- Neon gradients, excessive purple, glowing borders, and glass everywhere.
+- Oversized rounded cards around every element.
+- Decorative emoji used as interface icons.
+- Constant bouncing, spinning, or distracting animations.
+- Fake testimonials, invented user counts, and unsupported privacy claims.
+
+## KEY FILES TO KNOW
+
+### Design system files:
+- `apps/desktop/src/renderer/styles.css` — Electron app CSS (2247 lines). Already has warm sand/charcoal tokens. Extend, don't replace.
+- `apps/web/src/app/globals.css` — Web CSS with DaisyUI + Tailwind tokens. Already has milo/milo-dark themes. Extend, don't replace.
+
+### Electron renderer:
+- `apps/desktop/src/renderer/App.tsx` (1096 lines) — Main UI including PopoutBubbles, cat dock, panel, settings.
+- `apps/desktop/src/renderer/MiloCat.tsx` (108 lines) — SVG cat with all states (idle, noticed, generating, ready, paused, error). Uses CSS variables --cat, --cat-outline, --cat-ear, --cat-feature, --cat-eye-glint, --cat-nose, --cat-badge, --state-ready, --state-error, --state-paused.
+- `apps/desktop/src/renderer/styles.css` — All Electron CSS.
+- `apps/desktop/src/renderer/icons.tsx` — SVG icon components.
+- `apps/desktop/src/renderer/audio.ts` — Sound effects (do not change).
+
+### Shared contracts:
+- `apps/desktop/src/shared/contracts.ts` — Types including `PublicSettings`, `DesktopState`, `ToneProfile`, `DockMode`.
+- `apps/desktop/src/main/settings-store.ts` — Settings persistence with zod schema.
+
+### Web:
+- `apps/web/src/app/page.tsx` (442 lines) — Landing page with DaisyUI + Tailwind classes.
+- `apps/web/src/app/layout.tsx` — Root layout.
+- `apps/web/src/app/globals.css` — CSS tokens.
+- `apps/web/src/components/milo-cat.tsx` — Web cat SVG (blue gradient, currently).
+- `apps/web/src/components/site-header.tsx` — Site header.
+- `apps/web/src/components/coach-workspace.tsx` (36768 bytes) — Main dashboard workspace.
+- `apps/web/src/components/app-shell.tsx` — App shell/layout.
+- `apps/web/src/app/login/` — Login page.
+- `apps/web/src/app/account/` — Account page.
+- `apps/web/src/app/privacy/` — Privacy page.
+- `apps/web/src/app/terms/` — Terms page.
+- `apps/web/src/app/dashboard/page.tsx` — Dashboard page.
+
+## Requirements
+
+### R1. Upgrade the Electron Cat Mascot (MiloCat.tsx)
+Redesign the cat SVG to be more attractive and recognizable:
+- Softer proportions with expressive, slightly larger eyes.
+- More detailed face (subtle nose, nicer mouth curve, ear tips with inner color).
+- Better whiskers (thinner, more natural arcs).
+- Warmer body shape.
+- A small curled tail attached to the body.
+- All 6 visual states preserved: idle, noticed, generating, ready, paused, error.
+- The "generating" state must have subtle animated thinking dots (3 small dots pulsing).
+- Keep all CSS variable references (--cat, --cat-outline, --cat-ear, --cat-feature, etc.).
+- Crisp at 168x174px window size (the actual Electron window size).
+- viewBox="0 0 128 128" preserved.
+- Keep aria-label and role="img" accessible attributes.
+
+### R2. Add Cat Appearance Presets (no gender inference)
+Add an optional appearance selector:
+- **Charcoal** preset (default): existing warm charcoal cat (--cat: #2b3044, ear: #d97757, nose: #c86d51).
+- **Slate** preset: muted blue-grey cat (--cat: #4a5568, ear: #7b8fab, nose: #6b7fa0).
+- **Mauve** preset: muted rose-mauve cat (--cat: #7c6b7e, ear: #b8939b, nose: #a8838b).
+- **Caramel** preset: warm tan/amber cat (--cat: #8b6a3e, ear: #c49a6c, nose: #b58a5c).
+- Do NOT label these with gender anywhere in the UI. Use color names only.
+- Store the selected preset as `catAppearance` in the Electron settings store.
+- Add a new type `CatAppearance = "charcoal" | "slate" | "mauve" | "caramel"` to contracts.ts.
+- Extend `PublicSettings` with `catAppearance?: CatAppearance`.
+- Extend `persistedSettingsSchema` in settings-store.ts with `catAppearance: z.enum(["charcoal", "slate", "mauve", "caramel"]).default("charcoal")`.
+- Add `catAppearance` to `getPublicSettings()` return value in settings-store.ts.
+- In App.tsx, add a useEffect that applies the correct CSS variables when `snapshot.settings.catAppearance` changes (set on `document.documentElement.style`).
+- Show colored cat swatches (4 circular buttons, each filled with the cat body color) in the Settings section of the Electron panel.
+- Clicking a swatch calls `updateSettings({ catAppearance: preset })`.
+- For the website, store preference in localStorage key `milo_cat_appearance`. No DB changes.
+
+### R3. Refine Electron UI Styles (styles.css)
+Without changing any functionality, improve the visual quality by editing `apps/desktop/src/renderer/styles.css`:
+- **Cat dock** (`.cat-dock`): Softer shadow (--shadow-panel), 1px ring with --border color on hover.
+- **Watching pill** (`.watching-pill`): Tighter, more compact pill. State dot colors: idle=muted, noticed=amber, generating=blue animation, ready=green, paused=grey, error=red.
+- **Panel header** (`.panel__header`): Slightly taller, better separation line.
+- **Reply cards** (`.reply-card`): Distinct left border accent per type: safe=green, confident=charcoal, playful=terracotta. More padding. Clear copy button.
+- **PopoutBubbles** (`.popout-bubbles`): Smaller header, cleaner. No emoji text in the title (the SVG SparkIcon from icons.tsx should be used via a className that hides the ✨ text).
+- **Settings groups**: Better visual grouping with `background: var(--surface-muted)` panels.
+- **Focus rings**: `outline: 2px solid var(--border-focus); outline-offset: 2px;` on all `:focus-visible`.
+- **Appearance swatch buttons**: 28x28px circles with no border when unselected, 2px ring with offset when selected.
+- Respect `[data-reduced-motion="true"]` for all new animations.
+
+### R4. Upgrade the Website Cat (milo-cat.tsx in apps/web)
+Redesign the website cat to be consistent with the Electron cat:
+- Remove the blue linear gradient fill.
+- Use `currentColor` or explicit charcoal/terracotta values matching `--brand` (#2b3044) and `--accent` (#dc6a75).
+- Make ears filled with a warm terracotta (#d97757).
+- Nose is terracotta colored.
+- Eye glints are white.
+- Match the same general proportions as the redesigned Electron cat.
+- Two moods: "happy" (mouth curve up) and "thinking" (narrowed eyes, small mouth).
+- No SSR-conflicting gradient IDs (use `fill="#2b3044"` directly, not gradient).
+- Remove the `filter` shadow — use CSS shadow if needed.
+- Should look good at h-40 w-40 through h-64 w-64.
+
+### R5. Polish the Website Design
+- In `globals.css`: Change `.premium-button` box-shadow from the blue `rgba(91, 109, 248, 0.24)` to `rgba(var(--shadow-color) / 0.18)` and `rgba(var(--shadow-color) / 0.24)` on hover.
+- In `site-header.tsx`: Replace `MiloCat` with the redesigned cat. Remove the `group-hover:-rotate-3` tilt if it's distracting. Keep the badge but use a simpler, cleaner style.
+- In `page.tsx`: Ensure the hero section clearly shows the cat. The content is already good — make only targeted improvements to whitespace and any remaining blue shadows.
+- In `coach-workspace.tsx`: Review and fix any remaining hardcoded blue colors (`#5b6df8`, `rgba(91, 109, 248`, etc.) and replace with CSS variable references.
+
+### R6. Verification
+After all changes:
+1. Run `pnpm --filter @milo/desktop typecheck` — must pass with 0 errors.
+2. Run `pnpm --filter @milo/web typecheck` — must pass with 0 errors.
+3. Run `pnpm test` — must pass with 0 failures. Add a test for catAppearance persistence to the existing settings store test file if one exists.
+4. Run `node scripts/desktop-security-check.mjs` — must pass.
+5. Run `pnpm --filter @milo/desktop build` — must succeed.
+
+## Important Constraints (DO NOT CHANGE)
+- No AI models, prompts, or provider routing.
+- No authentication or billing logic changes.
+- No database schema changes.
+- No changes to nodeIntegration, contextIsolation, sandbox, CSP, or IPC allowlists.
+- No fake testimonials, invented user counts, or unverified privacy claims.
+- No automatic focus, typing, pasting, or sending in other apps.
+- Screenshots and OCR stay local.
+- The PRELOAD_METHOD_ALLOWLIST in contracts.ts must not change (catAppearance goes through the existing updateSettings channel).
+- When adding catAppearance to PublicSettings, add it as optional and handle it safely.
+- The milo-settings.json schema version stays at 1. Use .default("charcoal") in the zod schema.
+- Do NOT break any existing tests.
+
+## 2026-09-08T19:27:51Z
+
+Implement **Milestone 1** of the Milo V2 desktop companion upgrade. The goal of this milestone is to establish the new design system, audit the project, and create reusable UI primitives without altering the core logic yet.
+
+Working directory: C:\Users\abdul\Desktop\Buisness codex\milo
+Integrity mode: development
+
+## Requirements
+
+### R1. Project Audit & Documentation
+Audit the current Electron/React/Next.js repository. Create an artifact documenting the existing architecture, frameworks, state management, and where the new SQLite-based progression and character engine systems will integrate.
+
+### R2. Design Tokens
+Implement the new global color system as CSS variables (`--bg-primary: #10131F`, `--milo-coral: #FF8066`, etc.) for the desktop renderer. Implement the typography scale (H1 30px, H2 22px, Body 15px, etc.).
+
+### R3. Reusable UI Primitives
+Create clean, non-nested UI primitives (Cards, Buttons, Layout containers) that utilize the new design tokens and avoid excessive "card inside card" nesting.
+
+### R4. SQLite Preparation
+Install `better-sqlite3` (or equivalent standard SQLite library for Electron) and configure the basic connection singleton in the Electron main process, ready for future versioned data (XP, Customization, Room). Do not implement the schemas yet.
+
+## Acceptance Criteria
+
+### Verification & Testing
+- [ ] The desktop app compiles successfully (`pnpm --filter @milo/desktop build` passes).
+- [ ] Existing tests still pass (`pnpm test`).
+- [ ] No existing AI features or components are broken by the CSS/Token updates.
+- [ ] The SQLite dependency is correctly linked and a basic connection can be instantiated without native compilation errors in the Electron dev environment.
+- [ ] An artifact exists summarizing the audit and technical debt.

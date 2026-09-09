@@ -3,7 +3,7 @@ name: Security and quality gates
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "codex/milo-release"]
   schedule:
     - cron: "17 5 * * 1"
   workflow_dispatch:

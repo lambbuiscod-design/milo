@@ -1,3 +1,6 @@
+import assert from "node:assert/strict";
+import type { DesktopSnapshot, ToneProfile, PublicSettingsPatch, IpcResult, SuggestionResponse, WindowSelectionResult } from "../src/shared/contracts";
+type SuggestInput = Parameters<DesktopSuggestionClient["suggest"]>[0];
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrowserWindow, IpcMainInvokeEvent } from "electron";
 import { IPC_CHANNELS, type SyntheticSuggestion } from "../src/shared/contracts";
@@ -13,7 +16,7 @@ import type { OverlayController } from "../src/main/overlay-controller";
 // Mock Electron modules for Node/Vitest test environment
 const registeredIpcHandlers = new Map<string, (event: IpcMainInvokeEvent, payload: unknown) => Promise<unknown>>();
 const clipboardWritten: Array<{ text: string; type?: string }> = [];
-let mockSources: Array<{ id: string; name: string; thumbnail: any }> = [];
+let mockSources: Array<{ id: string; name: string; thumbnail: ReturnType<typeof createMockNativeImage> }> = [];
 
 vi.mock("electron", () => ({
   ipcMain: {
@@ -57,7 +60,7 @@ function createMockNativeImage(width = 1920, height = 1080) {
 }
 
 function createMockWindow() {
-  const sentMessages: Array<{ channel: string; payload: any }> = [];
+  const sentMessages: Array<{ channel: string; payload: DesktopSnapshot }> = [];
   const webContents = {
     id: 1,
     isDestroyed: () => false,
@@ -65,7 +68,7 @@ function createMockWindow() {
       isDestroyed: () => false,
       url: "milo://app/index.html",
     },
-    send: vi.fn((channel: string, payload: any) => {
+    send: vi.fn((channel: string, payload: DesktopSnapshot) => {
       sentMessages.push({ channel, payload });
     }),
   };
@@ -78,7 +81,7 @@ function createMockWindow() {
     setOpacity: vi.fn(),
     setAlwaysOnTop: vi.fn(),
     sentMessages,
-  } as unknown as BrowserWindow & { sentMessages: Array<{ channel: string; payload: any }> };
+  } as unknown as BrowserWindow & { sentMessages: Array<{ channel: string; payload: DesktopSnapshot }> };
 
   return window;
 }
@@ -86,7 +89,7 @@ function createMockWindow() {
 function createMockEvent(window: BrowserWindow): IpcMainInvokeEvent {
   return {
     sender: window.webContents,
-    senderFrame: (window.webContents as any).mainFrame,
+    senderFrame: window.webContents.mainFrame,
   } as unknown as IpcMainInvokeEvent;
 }
 
@@ -102,7 +105,7 @@ function createMockOverlay(): OverlayController {
   } as unknown as OverlayController;
 }
 
-function createMockSettingsStore(initialTone: any = "standard"): ContentFreeSettingsStore {
+function createMockSettingsStore(initialTone: ToneProfile = "standard"): ContentFreeSettingsStore {
   let paused = false;
   let activeTone = initialTone;
 
@@ -123,7 +126,7 @@ function createMockSettingsStore(initialTone: any = "standard"): ContentFreeSett
       isPinned: true,
       dockMode: "follow-window" as const,
     }),
-    updatePublicSettings: (patch: any) => {
+    updatePublicSettings: (patch: PublicSettingsPatch) => {
       if (patch.activeTone) activeTone = patch.activeTone;
       return {
         theme: "system" as const,
@@ -195,7 +198,7 @@ function createMockOcrEngine(options?: {
 }): DesktopOcrEngineApi {
   return {
     initialize: vi.fn(async () => {}),
-    extractFromBuffer: vi.fn(async (_buffer: Buffer): Promise<OcrExtractionResult> => {
+    extractFromBuffer: vi.fn(async (): Promise<OcrExtractionResult> => {
       if (options?.error) throw options.error;
       const rawText =
         options?.rawText !== undefined
@@ -216,7 +219,7 @@ function createMockSuggestionClient(options?: {
   replies?: Array<{ category: "safe" | "confident" | "playful"; text: string; whyItWorks: string }>;
   warning?: string | null;
   error?: Error;
-  onSuggest?: (input: any) => void;
+  onSuggest?: (input: SuggestInput) => void;
 }): DesktopSuggestionClient {
   const defaultReplies = [
     { category: "safe" as const, text: "Looking forward to it! See you at 8.", whyItWorks: "Warm confirmation." },
@@ -225,7 +228,7 @@ function createMockSuggestionClient(options?: {
   ];
 
   return {
-    suggest: vi.fn(async (input: any) => {
+    suggest: vi.fn(async (input: SuggestInput) => {
       if (options?.onSuggest) options.onSuggest(input);
       if (options?.error) throw options.error;
       return {
@@ -264,11 +267,11 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
     const event = createMockEvent(mockWindow);
     const settingsStore = createMockSettingsStore("witty");
     const authSession = createMockAuthSession("auth-token-xyz");
-    let suggestInputCaptured: any = null;
+    const suggestInputs: SuggestInput[] = [];
 
     const suggestionClient = createMockSuggestionClient({
       onSuggest: (input) => {
-        suggestInputCaptured = input;
+        suggestInputs.push(input);
       },
     });
 
@@ -293,30 +296,34 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       // 1. Select the WhatsApp chat window
       const selectHandler = registeredIpcHandlers.get(IPC_CHANNELS.selectWindow)!;
       expect(selectHandler).toBeDefined();
-      const selectResult = (await selectHandler(event, { sourceId: "window:101:0" })) as any;
+      const selectResult = (await selectHandler(event, { sourceId: "window:101:0" })) as IpcResult<WindowSelectionResult>;
       expect(selectResult.ok).toBe(true);
+      assert(selectResult.ok);
       expect(selectResult.value.mode).toBe("selected");
+      assert(selectResult.value.mode === "selected");
       expect(selectResult.value.window.title).toBe("WhatsApp - Alex");
 
       // 2. Trigger suggestion via askMilo with screen_capture mode
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
       expect(askHandler).toBeDefined();
-      const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+      const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
       // 3. Verify capture and OCR were called
       expect(windowCaptureService.captureWindow).toHaveBeenCalledWith("window:101:0");
       expect(ocrEngine.extractFromBuffer).toHaveBeenCalledTimes(1);
 
       // 4. Verify suggestionClient received properly normalized messages and tone
+      const suggestInputCaptured = suggestInputs[0]!;
       expect(suggestInputCaptured).toBeDefined();
       expect(suggestInputCaptured.accessToken).toBe("auth-token-xyz");
       expect(suggestInputCaptured.tone).toBe("witty");
       expect(suggestInputCaptured.relationshipStage).toBe("dating");
       expect(suggestInputCaptured.messages.length).toBeGreaterThanOrEqual(1);
-      expect(suggestInputCaptured.messages.every((m: any) => m.role === "unknown")).toBe(true);
+      expect(suggestInputCaptured.messages.every((m) => m.role === "unknown")).toBe(true);
 
       // 5. Verify askMilo return value contains 3 categorized suggestions
       expect(askResult.ok).toBe(true);
+      assert(askResult.ok);
       expect(askResult.value.mode).toBe("live");
       expect(askResult.value.replies).toHaveLength(3);
       expect(askResult.value.replies.map((r: SyntheticSuggestion) => r.id)).toEqual([
@@ -370,9 +377,10 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       await selectHandler(event, { sourceId: "window:101:0" });
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-      const askResult = (await askHandler(event, { mode: "selected_window" })) as any;
+      const askResult = (await askHandler(event, { mode: "selected_window" })) as IpcResult<SuggestionResponse>;
 
       expect(askResult.ok).toBe(true);
+      assert(askResult.ok);
       expect(askResult.value.mode).toBe("live");
       expect(askResult.value.replies).toHaveLength(3);
       expect(windowCaptureService.captureWindow).toHaveBeenCalledWith("window:101:0");
@@ -407,10 +415,11 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       await selectHandler(event, { sourceId: "window:101:0" });
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-      const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+      const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
       // Fail-safe handling: does not throw unhandled rejection, returns failure result
       expect(askResult.ok).toBe(false);
+      assert(!askResult.ok);
       expect(askResult.error.code).toBe("INTERNAL_ERROR");
 
       // State transitions to fail
@@ -452,9 +461,10 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       await selectHandler(event, { sourceId: "window:101:0" });
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-      const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+      const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
       expect(askResult.ok).toBe(false);
+      assert(!askResult.ok);
       expect(askResult.error.code).toBe("UNAVAILABLE");
 
       // Suggestion client must not be called when context is empty
@@ -496,9 +506,10 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       await selectHandler(event, { sourceId: "window:101:0" });
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-      const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+      const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
       expect(askResult.ok).toBe(false);
+      assert(!askResult.ok);
       expect(suggestionClient.suggest).not.toHaveBeenCalled();
 
       const lastSnapshot = mockWindow.sentMessages[mockWindow.sentMessages.length - 1]!.payload;
@@ -535,9 +546,10 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       await selectHandler(event, { sourceId: "window:101:0" });
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-      const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+      const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
       expect(askResult.ok).toBe(false);
+      assert(!askResult.ok);
       const lastSnapshot = mockWindow.sentMessages[mockWindow.sentMessages.length - 1]!.payload;
       expect(lastSnapshot.state).toBe("error");
       expect(lastSnapshot.replies).toEqual([]);
@@ -575,8 +587,9 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
 
       // Copy the confident reply
       const copyHandler = registeredIpcHandlers.get(IPC_CHANNELS.copyReply)!;
-      const copyResult = (await copyHandler(event, { suggestionId: "confident" })) as any;
+      const copyResult = (await copyHandler(event, { suggestionId: "confident" })) as IpcResult<void>;
       expect(copyResult.ok).toBe(true);
+      assert(copyResult.ok);
 
       // Verify clipboard written
       expect(clipboardWritten.length).toBeGreaterThan(0);
@@ -679,18 +692,31 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
 
-      // Trigger two consecutive askMilo requests rapidly
-      const [res1, res2] = (await Promise.all([
-        askHandler(event, { mode: "screen_capture" }),
-        askHandler(event, { mode: "screen_capture" }),
-      ])) as [any, any];
+      // Start call 1 — it will begin executing and eventually await captureWindow/OCR/getAccessToken.
+      // Call 2 must start while call 1 is still in-flight so that call 2's epoch increment
+      // supersedes call 1's epoch. A small real delay gives the JS engine time to schedule
+      // call 1's async steps before we fire call 2.
+      const p1 = askHandler(event, { mode: "screen_capture" });
 
-      // Call 1 was superseded because generationEpoch incremented
+      // Flush pending microtasks so call 1 has started its async chain
+      await new Promise<void>((resolve) => setTimeout(resolve, 5));
+
+      // Call 2 starts now — this increments generationEpoch, superseding call 1
+      const p2 = askHandler(event, { mode: "screen_capture" });
+
+      const [res1, res2] = (await Promise.all([p1, p2])) as [
+        IpcResult<SuggestionResponse>,
+        IpcResult<SuggestionResponse>,
+      ];
+
+      // Call 1 was superseded because generationEpoch incremented when call 2 started
       expect(res1.ok).toBe(false);
+      assert(!res1.ok);
       expect(res1.error.code).toBe("UNAVAILABLE");
 
       // Call 2 succeeded with the latest epoch
       expect(res2.ok).toBe(true);
+      assert(res2.ok);
       expect(res2.value.replies[0].text).toBe("Call 2 Safe");
 
       // Verify the final published snapshot contains Call 2's replies, not superseded Call 1
@@ -728,9 +754,10 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       await selectHandler(event, { sourceId: "window:101:0" });
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-      const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+      const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
       expect(askResult.ok).toBe(false);
+      assert(!askResult.ok);
       expect(askResult.error.code).toBe("INTERNAL_ERROR");
 
       const lastSnapshot = mockWindow.sentMessages[mockWindow.sentMessages.length - 1]!.payload;
@@ -766,9 +793,10 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       await selectHandler(event, { sourceId: "window:101:0" });
 
       const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-      const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+      const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
       expect(askResult.ok).toBe(false);
+      assert(!askResult.ok);
       expect(askResult.error.code).toBe("UNAVAILABLE");
       expect(suggestionClient.suggest).not.toHaveBeenCalled();
 
@@ -818,10 +846,11 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
           await selectHandler(event, { sourceId: "window:101:0" });
 
           const askHandler = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!;
-          const askResult = (await askHandler(event, { mode: "screen_capture" })) as any;
+          const askResult = (await askHandler(event, { mode: "screen_capture" })) as IpcResult<SuggestionResponse>;
 
           // Expect fail-safe IPC result (INTERNAL_ERROR per contract)
           expect(askResult.ok).toBe(false);
+      assert(!askResult.ok);
           expect(askResult.error.code).toBe("INTERNAL_ERROR");
 
           // Snapshot transitioned to fail and replies cleared
@@ -832,6 +861,74 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
           dispose();
         }
       });
+    }
+  });
+
+  it("does not select or read a window implicitly when the hotkey is pressed", async () => {
+    const capture = createMockWindowCaptureService();
+    const ocr = createMockOcrEngine();
+    const client = createMockSuggestionClient();
+    let trigger: () => void = () => { throw new Error("Hotkey was not registered"); };
+    const dispose = registerDesktopIpc({
+      window: createMockWindow(), overlay: createMockOverlay(), settingsStore: createMockSettingsStore(),
+      nativeHelper: createMockNativeHelper(), authSession: createMockAuthSession(),
+      suggestionClient: client, accountOpener: null, windowCaptureService: capture, ocrEngine: ocr,
+      shortcutApi: { register: (_key, callback) => { trigger = callback; return true; }, unregister: vi.fn() },
+    });
+    try {
+      trigger();
+      await Promise.resolve();
+      expect(capture.captureWindow).not.toHaveBeenCalled();
+      expect(ocr.extractFromBuffer).not.toHaveBeenCalled();
+      expect(client.suggest).not.toHaveBeenCalled();
+    } finally { dispose(); }
+  });
+
+  it("clears captured pixels and does not send context when paused during OCR", async () => {
+    const mockWindow = createMockWindow();
+    const event = createMockEvent(mockWindow);
+    const pixels = Buffer.from("synthetic capture bytes");
+    const ocr = createMockOcrEngine();
+    const client = createMockSuggestionClient();
+    let finishOcr!: (value: OcrExtractionResult) => void;
+    vi.mocked(ocr.extractFromBuffer).mockImplementation(() => new Promise((resolve) => { finishOcr = resolve; }));
+    const dispose = registerDesktopIpc({
+      window: mockWindow, overlay: createMockOverlay(), settingsStore: createMockSettingsStore(),
+      nativeHelper: createMockNativeHelper(), authSession: createMockAuthSession(),
+      suggestionClient: client, accountOpener: null,
+      windowCaptureService: createMockWindowCaptureService({ capturedBuffer: pixels }), ocrEngine: ocr,
+    });
+    try {
+      await registeredIpcHandlers.get(IPC_CHANNELS.selectWindow)!(event, { sourceId: "window:101:0" });
+      const pending = registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!(event, { mode: "screen_capture" });
+      await vi.waitFor(() => expect(ocr.extractFromBuffer).toHaveBeenCalled());
+      await registeredIpcHandlers.get(IPC_CHANNELS.pauseWatching)!(event, true);
+      finishOcr({ rawText: "Other: Dinner tomorrow?", normalizedText: "Dinner tomorrow?", confidence: 90, durationMs: 1 });
+      expect(await pending).toMatchObject({ ok: false, error: { code: "UNAVAILABLE" } });
+      expect(client.suggest).not.toHaveBeenCalled();
+      expect(pixels.every((byte) => byte === 0)).toBe(true);
+      expect(mockWindow.sentMessages.at(-1)?.payload.state).toBe("paused");
+    } finally { dispose(); }
+  });
+
+  it("fails closed without an AI client and preserves provider safety warnings", async () => {
+    for (const configured of [false, true]) {
+      const mockWindow = createMockWindow();
+      const event = createMockEvent(mockWindow);
+      const dispose = registerDesktopIpc({
+        window: mockWindow, overlay: createMockOverlay(), settingsStore: createMockSettingsStore(),
+        nativeHelper: createMockNativeHelper(), authSession: createMockAuthSession(),
+        suggestionClient: configured ? createMockSuggestionClient({ warning: "Please add the missing context." }) : null,
+        accountOpener: null, windowCaptureService: createMockWindowCaptureService(), ocrEngine: createMockOcrEngine(),
+      });
+      try {
+        await registeredIpcHandlers.get(IPC_CHANNELS.selectWindow)!(event, { sourceId: "window:101:0" });
+        const result = await registeredIpcHandlers.get(IPC_CHANNELS.askMilo)!(event, { mode: "screen_capture" });
+        expect(result).toMatchObject(configured
+          ? { ok: true, value: { warning: "Please add the missing context." } }
+          : { ok: false, error: { code: "UNAVAILABLE" } });
+        if (!configured) expect(mockWindow.sentMessages.at(-1)?.payload.replies).toEqual([]);
+      } finally { dispose(); }
     }
   });
 
@@ -858,8 +955,9 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       try {
         const copyHandler = registeredIpcHandlers.get(IPC_CHANNELS.copyReply)!;
         // No suggestions have been generated yet
-        const copyResult = (await copyHandler(event, { suggestionId: "safe" })) as any;
+        const copyResult = (await copyHandler(event, { suggestionId: "safe" })) as IpcResult<void>;
         expect(copyResult.ok).toBe(false);
+      assert(!copyResult.ok);
         expect(copyResult.error.code).toBe("UNAVAILABLE");
         expect(clipboardWritten).toHaveLength(0);
       } finally {
@@ -886,8 +984,9 @@ describe("Screen Capture + OCR -> DesktopSuggestionClient Integration", () => {
       try {
         const copyHandler = registeredIpcHandlers.get(IPC_CHANNELS.copyReply)!;
         // Invalid ID not in "safe" | "confident" | "playful"
-        const copyResult = (await copyHandler(event, { suggestionId: "invalid_id" })) as any;
+        const copyResult = (await copyHandler(event, { suggestionId: "invalid_id" })) as IpcResult<void>;
         expect(copyResult.ok).toBe(false);
+      assert(!copyResult.ok);
         expect(copyResult.error.code).toBe("INVALID_REQUEST");
         expect(clipboardWritten).toHaveLength(0);
       } finally {

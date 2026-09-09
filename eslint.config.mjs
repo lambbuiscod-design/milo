@@ -14,6 +14,11 @@ const eslintConfig = defineConfig([
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    ".agents/**",
+    "artifacts/**",
+    "apps/desktop/native-runtime/**",
+    "test-results/**",
+    "playwright-report/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     ".next-e2e/**",

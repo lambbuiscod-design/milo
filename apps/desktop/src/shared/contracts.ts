@@ -18,6 +18,9 @@ export type AccountDestination = "account" | "billing" | "privacy" | "terms";
 export type ToneProfile = "standard" | "romantic" | "witty" | "professional";
 export type DockMode = "free" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "follow-window";
 
+export const CAT_APPEARANCES = ["charcoal", "slate", "mauve", "caramel"] as const;
+export type CatAppearance = (typeof CAT_APPEARANCES)[number];
+
 export const TONE_PROFILE_METADATA: Record<ToneProfile, { title: string; description: string; emoji: string }> = {
   standard: { title: "Dating & Friends", description: "Balanced, authentic & calm", emoji: "💬" },
   romantic: { title: "Flirty & Romantic", description: "Charming, warm & playful", emoji: "✨" },
@@ -36,6 +39,7 @@ export type PublicSettings = Readonly<{
   opacity?: number;
   isPinned?: boolean;
   dockMode?: DockMode;
+  catAppearance?: CatAppearance;
 }>;
 
 export type PublicSettingsPatch = Partial<PublicSettings>;

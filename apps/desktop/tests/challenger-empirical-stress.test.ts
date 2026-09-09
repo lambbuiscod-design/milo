@@ -20,16 +20,16 @@ import { registerDesktopIpc } from "../src/main/desktop-ipc";
 import { IPC_CHANNELS, type PanelPlacement, type SyntheticSuggestion } from "../src/shared/contracts";
 
 const rendererModulePath = "../src/renderer/App";
-const { PopoutBubbles, App } = await import(rendererModulePath);
+const { PopoutBubbles } = await import(rendererModulePath);
 
 // Mock Electron primitives
-const registeredIpcHandlers = new Map<string, (event: any, payload: unknown) => Promise<unknown>>();
+const registeredIpcHandlers = new Map<string, (event: unknown, payload: unknown) => Promise<unknown>>();
 const clipboardWritten: Array<{ text: string; type?: string }> = [];
-let mockSources: Array<{ id: string; name: string; thumbnail: any }> = [];
+let mockSources: Array<{ id: string; name: string; thumbnail: Pick<Electron.NativeImage, "isEmpty" | "getSize" | "toPNG"> }> = [];
 
 vi.mock("electron", () => ({
   ipcMain: {
-    handle: vi.fn((channel: string, handler: (event: any, payload: unknown) => Promise<unknown>) => {
+    handle: vi.fn((channel: string, handler: (event: unknown, payload: unknown) => Promise<unknown>) => {
       registeredIpcHandlers.set(channel, handler);
     }),
     removeHandler: vi.fn((channel: string) => {
@@ -151,13 +151,11 @@ describe("CHALLENGER STRESS SUITE 1: Global Hotkey Robustness & Re-entrancy", ()
   it("handles extreme burst firing (100 concurrent triggers) without overlapping requests", async () => {
     let activeExecutions = 0;
     let maxConcurrent = 0;
-    let totalExecutions = 0;
     let resolveCurrent: (() => void) | null = null;
 
     const mockRequest = vi.fn(async () => {
       activeExecutions++;
       maxConcurrent = Math.max(maxConcurrent, activeExecutions);
-      totalExecutions++;
       await new Promise<void>((res) => {
         resolveCurrent = res;
       });
@@ -502,7 +500,7 @@ describe("CHALLENGER STRESS SUITE 4: Anchor Geometry Across All 4 Placements", (
     for (const { pos, expectedPlacement } of testPositions) {
       const mockWin = createMockBrowserWindow({ ...pos, ...COLLAPSED_OVERLAY_SIZE });
       const mockSettings = createMockSettingsStore(pos);
-      const controller = new OverlayController(mockWin, mockSettings as any);
+      const controller = new OverlayController(mockWin, mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"]);
       controller.initialize();
 
       expect(controller.isBubblesOpen()).toBe(false);
@@ -597,10 +595,6 @@ describe("CHALLENGER STRESS SUITE 5: Copy-and-Close IPC & Focus Preservation", (
       signOut: vi.fn(),
     };
 
-    const mockCapturer = {
-      getSources: vi.fn(async () => mockSources as any),
-    };
-
     const mockOcrEngine = {
       initialize: vi.fn(async () => undefined),
       extractFromBuffer: vi.fn(async () => ({
@@ -623,16 +617,16 @@ describe("CHALLENGER STRESS SUITE 5: Copy-and-Close IPC & Focus Preservation", (
 
     const dispose = registerDesktopIpc({
       window: mockWindow,
-      overlay: mockOverlay as any,
-      settingsStore: mockSettings as any,
+      overlay: mockOverlay as unknown as OverlayController,
+      settingsStore: mockSettings as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"],
       nativeHelper: {
         listWindows: vi.fn(async () => []),
         suspend: vi.fn(),
         requestContext: vi.fn(),
         isAvailable: vi.fn(() => false),
-      } as any,
-      authSession: mockAuthSession as any,
-      suggestionClient: mockSuggestionClient as any,
+      } as unknown as Parameters<typeof registerDesktopIpc>[0]["nativeHelper"],
+      authSession: mockAuthSession as unknown as Parameters<typeof registerDesktopIpc>[0]["authSession"],
+      suggestionClient: mockSuggestionClient as unknown as Parameters<typeof registerDesktopIpc>[0]["suggestionClient"],
       accountOpener: vi.fn(),
       windowCaptureService: {
         captureWindow: vi.fn(async () => ({
@@ -641,10 +635,15 @@ describe("CHALLENGER STRESS SUITE 5: Copy-and-Close IPC & Focus Preservation", (
           height: 600,
           capturedAt: Date.now(),
         })),
-      } as any,
+      } as unknown as Parameters<typeof registerDesktopIpc>[0]["windowCaptureService"],
       ocrEngine: mockOcrEngine,
       shortcutApi: mockShortcut,
     });
+
+    await registeredIpcHandlers.get("milo:select-window")!({
+      sender: mockWindow.webContents,
+      senderFrame: mockWindow.webContents.mainFrame,
+    }, { sourceId: "window:1234:0" });
 
     // 1. Trigger hotkey to generate suggestions
     hotkeyCb!();
@@ -662,7 +661,7 @@ describe("CHALLENGER STRESS SUITE 5: Copy-and-Close IPC & Focus Preservation", (
     };
 
     // Invoke copying "playful" reply
-    const result = await copyHandler!(mockEvent, { suggestionId: "playful" }) as any;
+    const result = await copyHandler!(mockEvent, { suggestionId: "playful" }) as import("../src/shared/contracts").IpcResult<void>;
     expect(result.ok).toBe(true);
 
     // Verify clipboard write
@@ -675,14 +674,15 @@ describe("CHALLENGER STRESS SUITE 5: Copy-and-Close IPC & Focus Preservation", (
 
     // Verify snapshot was published with lastAction = "copied"
     const lastPublishedState = mockWindow.sentMessages.find(
-      (m) => m.channel === IPC_CHANNELS.stateChanged && (m.payload as any).lastAction === "copied",
+      (m) => m.channel === IPC_CHANNELS.stateChanged && (m.payload as import("../src/shared/contracts").DesktopSnapshot).lastAction === "copied",
     );
     expect(lastPublishedState).toBeDefined();
-    expect((lastPublishedState?.payload as any).lastAction).toBe("copied");
+    expect((lastPublishedState?.payload as import("../src/shared/contracts").DesktopSnapshot).lastAction).toBe("copied");
 
     // 3. Test copyReply with non-existent suggestionId
-    const invalidResult = await copyHandler!(mockEvent, { suggestionId: "invalid_choice" }) as any;
+    const invalidResult = await copyHandler!(mockEvent, { suggestionId: "invalid_choice" }) as import("../src/shared/contracts").IpcResult<void>;
     expect(invalidResult.ok).toBe(false);
+    if (invalidResult.ok) throw new Error("Expected invalid IPC request to fail");
     expect(invalidResult.error.code).toBe("INVALID_REQUEST");
 
     dispose();

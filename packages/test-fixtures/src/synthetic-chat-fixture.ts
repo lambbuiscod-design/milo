@@ -28,7 +28,7 @@ export const SYNTHETIC_CHAT_EXPECTED_SUBSTRINGS = [
 let initialBase64 = "";
 
 try {
-  const sharpModule: any = await import("sharp");
+  const sharpModule = await import("sharp");
   const sharpFn =
     typeof sharpModule.default === "function"
       ? sharpModule.default

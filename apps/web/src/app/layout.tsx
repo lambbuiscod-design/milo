@@ -1,6 +1,22 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { Newsreader, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+});
 
 export const metadata: Metadata = {
   title: {
@@ -23,7 +39,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className="h-full antialiased"
+      className={`h-full antialiased ${jakarta.variable} ${newsreader.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-full">

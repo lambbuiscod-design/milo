@@ -128,7 +128,10 @@ internal static class Protocol
 
     private static async Task<BoundedLine> ReadLineBoundedAsync(StreamReader reader)
     {
-        var buffer = new char[512];
+        // StreamReader already buffers the underlying pipe. Consume one UTF-16
+        // code unit at a time so a newline never discards the next request from
+        // the same pipe write, and short requests do not wait for a full block.
+        var buffer = new char[1];
         var value = new StringBuilder(capacity: 1_024);
         var tooLarge = false;
         var utf8ByteCount = 0;

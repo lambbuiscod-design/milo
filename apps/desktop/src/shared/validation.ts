@@ -26,6 +26,7 @@ const motionSchema = z.enum(["system", "full", "reduced"]);
 const suggestionIdSchema = z.enum(["safe", "confident", "playful"]);
 const toneProfileSchema = z.enum(["standard", "romantic", "witty", "professional"]);
 const dockModeSchema = z.enum(["free", "top-left", "top-right", "bottom-left", "bottom-right", "follow-window"]);
+const catAppearanceSchema = z.enum(["charcoal", "slate", "mauve", "caramel"]);
 
 const settingsSchema = z
   .object({
@@ -39,9 +40,11 @@ const settingsSchema = z
     opacity: z.number().min(0.75).max(1).optional(),
     isPinned: z.boolean().optional(),
     dockMode: dockModeSchema.optional(),
+    catAppearance: catAppearanceSchema.optional(),
   })
   .strict();
 const settingsPatchSchema = settingsSchema.partial().strict();
+export const updateSettingsSchema = settingsPatchSchema;
 const authSummarySchema = z.object({
   status: z.enum(["signed_out", "authenticated", "unavailable", "error"]),
   expiresAt: z.number().int().nonnegative().nullable(),

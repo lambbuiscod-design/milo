@@ -1,6 +1,6 @@
 import type { DesktopState } from "../shared/contracts";
 
-type MiloCatProps = Readonly<{ state: DesktopState }>;
+type MiloCatProps = Readonly<{ state: DesktopState; "aria-label"?: string }>;
 
 const STATE_LABELS: Record<DesktopState, string> = {
   idle: "Milo is resting",
@@ -11,7 +11,7 @@ const STATE_LABELS: Record<DesktopState, string> = {
   error: "Milo needs attention",
 };
 
-export function MiloCat({ state }: MiloCatProps) {
+export function MiloCat({ state, "aria-label": customAriaLabel }: MiloCatProps) {
   const eyes = state === "paused" ? "paused" : state === "noticed" ? "wide" : "normal";
 
   return (
@@ -19,71 +19,118 @@ export function MiloCat({ state }: MiloCatProps) {
       className={`milo-cat milo-cat--${state}`}
       viewBox="0 0 128 128"
       role="img"
-      aria-label={STATE_LABELS[state]}
+      aria-label={customAriaLabel ?? "Milo cat mascot"}
     >
+      <title>{STATE_LABELS[state]}</title>
+
+      {/* Small curled tail attached to right hip */}
       <path
         className="milo-cat__tail"
-        d="M101 84c19 1 21 21 8 28-8 4-15-1-13-8 1-4 5-5 8-3"
+        d="M84 98c11 2 22-2 24-13 2-9-7-13-11-8-3 4-1 9 4 8"
         fill="none"
         stroke="currentColor"
         strokeLinecap="round"
-        strokeWidth="8"
+        strokeLinejoin="round"
+        strokeWidth="6.5"
       />
+
+      {/* Warmer rounded feline body */}
       <path
         className="milo-cat__body"
-        d="M36 77c-3 15-2 34 6 42h44c8-10 8-28 3-42Z"
+        d="M34 77c-6 13-4 30 4 39 4 4 11 5 26 5s22-1 26-5c8-9 10-26 4-39-4-7-12-11-27-11s-23 4-27 11Z"
         fill="currentColor"
       />
+
+      {/* Outer ears with rounded tips */}
       <path
         className="milo-cat__ear"
-        d="m31 34 5-24 22 16M97 34l-5-24-22 16"
+        d="M30 42C30 28 34 14 40 12c5-1 9 6 18 14M98 42C98 28 94 14 88 12c-5-1-9 6-18 14"
         fill="currentColor"
         stroke="var(--cat-outline)"
         strokeLinejoin="round"
+        strokeLinecap="round"
         strokeWidth="4"
       />
+
+      {/* Ear tips with inner color */}
+      <path
+        d="M37 38c0-10 2-19 5-21 2-1 4 3 10 10ZM91 38c0-10-2-19-5-21-2-1-4 3-10 10Z"
+        fill="var(--cat-ear)"
+      />
+
+      {/* Softer feline head with cute rounded cheeks */}
       <path
         className="milo-cat__head"
-        d="M26 50c0-20 17-34 38-34s38 14 38 34v17c0 23-17 35-38 35S26 90 26 67Z"
+        d="M26 53C26 33 42 20 64 20s38 13 38 33c0 14-4 23-9 29-8 9-17 11-29 11s-21-2-29-11c-5-6-9-15-9-29Z"
         fill="currentColor"
         stroke="var(--cat-outline)"
         strokeWidth="4"
       />
-      <path d="m40 29 4-10 9 8M88 29l-4-10-9 8" fill="var(--cat-ear)" />
 
+      {/* Eyes: paused resting curve or expressive dual-glint eyes */}
       {eyes === "paused" ? (
-        <g className="milo-cat__eyes" fill="none" stroke="var(--cat-feature)" strokeLinecap="round" strokeWidth="4">
-          <path d="M43 57h11M74 57h11" />
+        <g className="milo-cat__eyes" fill="none" stroke="var(--cat-feature)" strokeLinecap="round" strokeWidth="3.5">
+          <path d="M42 57c2.5 3 9.5 3 12 0M74 57c2.5 3 9.5 3 12 0" />
         </g>
       ) : (
         <g className={`milo-cat__eyes milo-cat__eyes--${eyes}`} fill="var(--cat-feature)">
-          <ellipse cx="48" cy="57" rx={eyes === "wide" ? 5 : 4} ry={eyes === "wide" ? 7 : 6} />
-          <ellipse cx="80" cy="57" rx={eyes === "wide" ? 5 : 4} ry={eyes === "wide" ? 7 : 6} />
-          <circle cx="49" cy="55" r="1.5" fill="var(--cat-eye-glint)" />
-          <circle cx="81" cy="55" r="1.5" fill="var(--cat-eye-glint)" />
+          <ellipse cx="48" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
+          <ellipse cx="80" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
+          {/* Dual glints */}
+          <circle cx="46.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
+          <circle cx="50" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
+          <circle cx="78.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
+          <circle cx="82" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
         </g>
       )}
 
-      <path d="m64 66-4 4h8Z" fill="var(--cat-nose)" />
+      {/* Subtle nose */}
+      <path
+        d="M61.8 65.5c0-1.2 4.4-1.2 4.4 0 0 1.4-1.6 2.7-2.2 3.1-.6-.4-2.2-1.7-2.2-3.1Z"
+        fill="var(--cat-nose)"
+      />
+
+      {/* Expressive feline mouth curve */}
       <path
         className="milo-cat__mouth"
-        d={state === "error" ? "M57 79c4-4 10-4 14 0" : state === "ready" ? "M55 74c4 9 14 9 18 0" : "M58 74c3 4 9 4 12 0"}
+        d={
+          state === "error"
+            ? "M64 68.6v2m-6 3.5c2-2 4.5-2 6-.5m0 .5c1.5-1.5 4-1.5 6 .5"
+            : state === "ready"
+            ? "M64 68.6v2m-8 2c2.5 3.5 5.5 3.5 8 .5m0 0c2.5 3 5.5 3 8-.5"
+            : "M64 68.6v2m-7 2c2 2.2 4.5 2.2 7 .5m0 0c2.5 1.7 5 1.7 7-.5"
+        }
         fill="none"
         stroke="var(--cat-feature)"
         strokeLinecap="round"
-        strokeWidth="3"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
       />
-      <g fill="none" stroke="var(--cat-feature)" strokeLinecap="round" strokeWidth="2" opacity=".72">
-        <path d="M44 70 27 66M45 75l-17 2M84 70l17-4M83 75l17 2" />
+
+      {/* Better whiskers: thinner, natural graceful arcs */}
+      <g fill="none" stroke="var(--cat-feature)" strokeLinecap="round" strokeWidth="1.5" opacity="0.68">
+        <path d="M43 68C37 67 30 67 23 69M43 73C37 74 30 77 24 81M85 68C91 67 98 67 105 69M85 73C91 74 98 77 104 81" />
       </g>
 
+      {/* Generating state: 3 subtle pulsing animated thinking dots cleanly inside viewBox 0 0 128 128 */}
       {state === "generating" && (
-        <g className="milo-cat__thinking" fill="var(--cat-badge)">
-          <circle cx="100" cy="24" r="4" />
-          <circle cx="110" cy="14" r="6" />
-          <circle cx="121" cy="5" r="8" />
+        <g className="milo-cat__thinking" fill="var(--cat-badge, var(--brand, #2b3044))">
+          <circle cx="96" cy="26" r="3" opacity="0.4">
+            <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0s" />
+            <animate attributeName="r" values="2.6;3.4;2.6" dur="1.4s" repeatCount="indefinite" begin="0s" />
+          </circle>
+          <circle cx="106" cy="19" r="3.5" opacity="0.4">
+            <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0.25s" />
+            <animate attributeName="r" values="3.0;4.0;3.0" dur="1.4s" repeatCount="indefinite" begin="0.25s" />
+          </circle>
+          <circle cx="116" cy="13" r="4" opacity="0.4">
+            <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0.5s" />
+            <animate attributeName="r" values="3.5;4.6;3.5" dur="1.4s" repeatCount="indefinite" begin="0.5s" />
+          </circle>
         </g>
       )}
+
+      {/* State Badges: ready, error, paused */}
       {state === "ready" && (
         <g className="milo-cat__badge" aria-hidden="true">
           <circle cx="106" cy="24" r="14" fill="var(--state-ready)" />

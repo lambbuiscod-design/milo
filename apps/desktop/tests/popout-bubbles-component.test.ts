@@ -13,13 +13,13 @@ import { WindowCaptureService } from "../src/main/window-capturer";
 import type { DesktopOcrEngineApi } from "../src/main/ocr-engine";
 
 // Mock Electron modules for Node/Vitest test environment
-const registeredIpcHandlers = new Map<string, (event: any, payload: unknown) => Promise<unknown>>();
+const registeredIpcHandlers = new Map<string, (event: unknown, payload: unknown) => Promise<unknown>>();
 const clipboardWritten: Array<{ text: string; type?: string }> = [];
-let mockSources: Array<{ id: string; name: string; thumbnail: any }> = [];
+let mockSources: Array<{ id: string; name: string; thumbnail: Pick<Electron.NativeImage, "isEmpty" | "getSize" | "toPNG"> }> = [];
 
 vi.mock("electron", () => ({
   ipcMain: {
-    handle: vi.fn((channel: string, handler: (event: any, payload: unknown) => Promise<unknown>) => {
+    handle: vi.fn((channel: string, handler: (event: unknown, payload: unknown) => Promise<unknown>) => {
       registeredIpcHandlers.set(channel, handler);
     }),
     removeHandler: vi.fn((channel: string) => {
@@ -60,7 +60,11 @@ function createMockWindow() {
       send: (channel: string, payload: unknown) => {
         sentMessages.push({ channel, payload });
       },
-      mainFrame: { url: "milo://app/index.html" },
+      mainFrame: {
+        url: "milo://app/index.html",
+        isDestroyed: () => false,
+      },
+      isDestroyed: () => false,
     },
     getBounds: () => ({ x: 100, y: 100, width: 168, height: 174 }),
     setBounds: vi.fn(),
@@ -83,7 +87,7 @@ function createMockWindow() {
 function createMockOverlay() {
   let bubblesOpen = false;
   let panelOpen = false;
-  let placement: PanelPlacement = "right-down";
+  const placement: PanelPlacement = "right-down";
 
   return {
     get panelOpen() {
@@ -290,7 +294,7 @@ describe("PopoutBubbles Component & View States", () => {
       nudgePosition: vi.fn(),
     };
 
-    (globalThis as any).window = {
+    vi.stubGlobal("window", {
       milo: mockMilo,
       matchMedia: vi.fn(() => ({
         matches: false,
@@ -299,13 +303,14 @@ describe("PopoutBubbles Component & View States", () => {
       })),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-    };
+    });
 
-    (globalThis as any).document = {
+    vi.stubGlobal("document", {
       documentElement: { dataset: {} },
-    };
+    });
 
     const html = renderToString(React.createElement(App));
+    vi.unstubAllGlobals();
 
     // Avatar dock is present
     expect(html).toContain("cat-dock");
@@ -390,7 +395,7 @@ describe("Global Hotkey (Alt+S) & Main IPC Wiring", () => {
     };
 
     const mockCapturer: DesktopCapturerApi = {
-      getSources: vi.fn(async () => mockSources as any),
+      getSources: vi.fn(async () => mockSources as unknown as Electron.DesktopCapturerSource[]),
     };
     const captureService = new WindowCaptureService(mockCapturer);
 
@@ -437,10 +442,10 @@ describe("Global Hotkey (Alt+S) & Main IPC Wiring", () => {
     const dispose = registerDesktopIpc({
       window: mockWindow,
       overlay: mockOverlay,
-      settingsStore: mockSettingsStore as any,
-      nativeHelper: mockNativeHelper as any,
-      authSession: mockAuthSession as any,
-      suggestionClient: mockSuggestionClient as any,
+      settingsStore: mockSettingsStore as unknown as Parameters<typeof registerDesktopIpc>[0]["settingsStore"],
+      nativeHelper: mockNativeHelper as unknown as Parameters<typeof registerDesktopIpc>[0]["nativeHelper"],
+      authSession: mockAuthSession as unknown as Parameters<typeof registerDesktopIpc>[0]["authSession"],
+      suggestionClient: mockSuggestionClient as unknown as Parameters<typeof registerDesktopIpc>[0]["suggestionClient"],
       accountOpener: vi.fn(),
       windowCaptureService: captureService,
       ocrEngine: mockOcrEngine,
@@ -450,6 +455,11 @@ describe("Global Hotkey (Alt+S) & Main IPC Wiring", () => {
     // 1. Verify that DEFAULT_SUGGESTION_HOTKEY (Alt+S on Windows) was registered
     expect(mockShortcut.register).toHaveBeenCalledTimes(1);
     expect(registeredHotkey).toBe(DEFAULT_SUGGESTION_HOTKEY);
+
+    await registeredIpcHandlers.get("milo:select-window")!({
+      sender: mockWindow.webContents,
+      senderFrame: mockWindow.webContents.mainFrame,
+    }, { sourceId: "window:1234:0" });
 
     // 2. Invoke the global hotkey
     expect(hotkeyCallback).not.toBeNull();

@@ -1,5 +1,8 @@
 # Milo
 
+For pinned tool setup, reproducible native packaging and the distinction
+between local verification and production approval, read [the release contract](docs/RELEASE.md).
+
 Milo is evolving into a privacy-first Windows desktop companion while preserving the existing screenshot-based web coach. The website remains the account, authentication, billing and cloud/API control plane. The Windows companion is delivered incrementally under the approved plan in `docs/exec-plans/active/windows-p0.md`.
 
 Milo never stores uploaded screenshots or extracted original conversations. Images are validated, sanitized in memory and read by private in-process OCR. Only the temporary OCR transcript and optional context are sent to OpenRouter; image and transcript buffers are cleared when practical. Milo never sends messages automatically.

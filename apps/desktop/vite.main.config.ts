@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         external: [
           "electron",
+          "better-sqlite3",
           "tesseract.js",
           "tesseract.js-core",
           "@tesseract.js-data/eng",

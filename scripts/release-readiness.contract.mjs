@@ -27,6 +27,21 @@ const ready = evaluateReleaseReadiness({
 });
 assert.deepEqual(ready, { ready: true, issues: [] });
 
+for (const [name, value] of [
+  ["NEXT_PUBLIC_APP_URL", "https://user:password@milo.example"],
+  ["NEXT_PUBLIC_APP_URL", "https://[::1]"],
+  ["NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co/rest/v1"],
+  ["NEXT_PUBLIC_SUPABASE_URL", "https://user:password@project.supabase.co"],
+  ["MILO_DESKTOP_REDIRECT_URI", "http://user:password@127.0.0.1:43821/oauth/callback"],
+]) {
+  const result = evaluateReleaseReadiness({
+    env: { ...completeEnv, [name]: value },
+    gitRemote: "https://github.com/example/milo.git", legalCopy: "Reviewed",
+    vercelLinked: true, worktreeClean: true,
+  });
+  assert.equal(result.ready, false, `${name} must reject malformed origins`);
+}
+
 const blocked = evaluateReleaseReadiness({
   env: { NEXT_PUBLIC_APP_URL: "http://localhost:3000", MILO_E2E_MODE: "true" },
   gitRemote: "",
