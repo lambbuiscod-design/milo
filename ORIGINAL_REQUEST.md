@@ -373,3 +373,59 @@ Run `pnpm test`, `pnpm typecheck`, and the desktop security check script after t
 - [ ] Unit tests for the interaction handlers verify the cooldowns and state transitions.
 - [ ] The `MiloStateMachine` correctly processes these interaction events.
 - [ ] Zero API calls are added to the codebase.
+  
+## 2026-09-10T18:35:00Z  
+  
+# Teamwork Project Prompt — Draft
+
+> Status: Ready for launch — awaiting user approval.
+> Goal: Craft prompt → delegate to teamwork_preview
+> Requested team: [none — teamwork routes from the description]
+
+Implement **Milestone 5** of the Milo V2 desktop companion upgrade. The goal of this milestone is to implement the **Idle Manager**, handling the lifecycle of inactivity, progressive idle states (including sleep), and weighted random behaviors.
+
+Working directory: C:\Users\abdul\Desktop\Buisness codex\milo
+Integrity mode: development
+
+## Requirements
+
+### R1. Idle Manager
+Implement a local `IdleManager` (e.g. in the `main` process) that tracks user interaction and animation timestamps:
+```ts
+lastUserInteraction: number;
+lastMiloAnimation: number;
+currentIdleDuration: number;
+lastIdleBehavior: string | null;
+```
+User interactions (hover, click, drag, IPC messages) should reset the `lastUserInteraction` and wake Milo if sleeping.
+
+### R2. Progressive Idle Intervals
+Based on `currentIdleDuration`, Milo should transition through different phases. During these phases, the `IdleManager` should periodically evaluate and trigger a behavior.
+- **0–2 min**: blink, look around, normal idle
+- **2–5 min**: stretch, clean paws, look around
+- **5–10 min**: coffee, read, small toy
+- **10–15 min**: yawn, sleepy
+- **15+ min**: sleep (This should be a persistent state until woken).
+
+*Note: You do not need to implement complex sprite sheets or exact graphical animations for all these states if they don't exist yet, but the `MiloStateMachine` and renderer must support these states (or mapping them to UI visual states/logs), and the manager logic must accurately transition them.*
+
+### R3. Weighted Random System & Cooldowns
+Milo should not trigger behaviors constantly. Implement a weighted randomness system with per-animation cooldowns.
+Example signature:
+```ts
+{
+  id: "stretch",
+  weight: 25,
+  cooldownMs: 300000 // 5 minutes
+}
+```
+Select random behaviors based on the current interval pool, weights, and cooldown guards.
+
+## Verification Resources
+Run `pnpm test`, `pnpm typecheck`, and the desktop security check script after the milestone. 
+
+## Acceptance Criteria
+- [ ] The desktop app compiles successfully (`pnpm --filter @milo/desktop build` passes).
+- [ ] Unit tests for the `IdleManager` verify interval phase transitions, sleep, wake, and cooldown enforcement.
+- [ ] The `MiloStateMachine` processes sleep and wake correctly.
+- [ ] Zero API calls are added to the codebase.
