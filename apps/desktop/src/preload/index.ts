@@ -24,6 +24,7 @@ import {
   parseSelectWindowInput,
   parseWindowSelectionResult,
   parseWatchingState,
+  parseTriggerCharacterActionInput,
 } from "../shared/validation";
 
 type OutputParser<T> = (value: unknown) => T;
@@ -95,6 +96,12 @@ const api: MiloDesktopApi = Object.freeze({
     ipcRenderer.on(IPC_CHANNELS.stateChanged, wrapped);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.stateChanged, wrapped);
   },
+  triggerCharacterAction: (input) =>
+    invoke(
+      IPC_CHANNELS.triggerCharacterAction,
+      parseTriggerCharacterActionInput(input),
+      parseVoid,
+    ),
 });
 
 if (

@@ -159,6 +159,120 @@ export type NudgePositionInput = Readonly<{
   step: 10 | 40;
 }>;
 
+export type TriggerCharacterActionInput =
+  | Readonly<{ action: "drag_start" }>
+  | Readonly<{ action: "drag_move"; deltaX: number; deltaY: number }>
+  | Readonly<{ action: "drag_end" }>
+  | Readonly<{ action: "look_around" }>
+  | Readonly<{ action: "play_animation"; animationName?: string }>;
+
+export const HARMLESS_ANIMATIONS: Readonly<Record<string, { state: CharacterState; durationMs: number }>> = Object.freeze({
+  wave: { state: "celebrating", durationMs: 2000 },
+  jump: { state: "playful", durationMs: 1800 },
+  spin: { state: "playful", durationMs: 1800 },
+  happy: { state: "pet", durationMs: 2000 },
+  surprised: { state: "curious", durationMs: 2000 },
+  tiny_dance: { state: "celebrating", durationMs: 2500 },
+});
+
+export const CLICK_DELAY_MS = 250;
+export const DOUBLE_CLICK_COOLDOWN_MS = 1500;
+export const DRAG_DISTANCE_THRESHOLD = 5;
+export const HOLD_DURATION_THRESHOLD_MS = 160;
+
+export const MAX_PUPIL_OFFSET_X = 3.5;
+export const MAX_PUPIL_OFFSET_Y = 2.5;
+export const DEFAULT_FACE_CENTER = Object.freeze({ x: 125, y: 135 });
+export const DEFAULT_MAX_DIST = Object.freeze({ x: 125, y: 150 });
+
+export const HARMLESS_ANIMATION_NAMES = [
+  "wave",
+  "jump",
+  "spin",
+  "happy",
+  "surprised",
+  "tiny_dance",
+] as const;
+export type HarmlessAnimationName = (typeof HARMLESS_ANIMATION_NAMES)[number];
+
+export interface PupilOffset {
+  readonly x: number;
+  readonly y: number;
+}
+
+export function calculatePupilOffset(
+  pointer: { x: number; y: number },
+  faceCenter: { x: number; y: number } = DEFAULT_FACE_CENTER,
+  maxDist: { x: number; y: number } = DEFAULT_MAX_DIST,
+): PupilOffset {
+  const dx = pointer.x - faceCenter.x;
+  const dy = pointer.y - faceCenter.y;
+  const normalizedX = Math.max(-1, Math.min(1, dx / (maxDist.x || 1)));
+  const normalizedY = Math.max(-1, Math.min(1, dy / (maxDist.y || 1)));
+  const x = Math.round(normalizedX * MAX_PUPIL_OFFSET_X * 100) / 100;
+  const y = Math.round(normalizedY * MAX_PUPIL_OFFSET_Y * 100) / 100;
+  return { x, y };
+}
+
+export class ClickDisambiguator {
+  #clickTimer: ReturnType<typeof setTimeout> | null = null;
+  #lastDoubleClickTimestamp = 0;
+  readonly #onSingleClick: () => void;
+  readonly #onDoubleClick: (animationName: HarmlessAnimationName) => void;
+  readonly #clickDelayMs: number;
+  readonly #doubleClickCooldownMs: number;
+
+  constructor(options: {
+    onSingleClick: () => void;
+    onDoubleClick: (animationName: HarmlessAnimationName) => void;
+    clickDelayMs?: number;
+    doubleClickCooldownMs?: number;
+  }) {
+    this.#onSingleClick = options.onSingleClick;
+    this.#onDoubleClick = options.onDoubleClick;
+    this.#clickDelayMs = options.clickDelayMs ?? CLICK_DELAY_MS;
+    this.#doubleClickCooldownMs = options.doubleClickCooldownMs ?? DOUBLE_CLICK_COOLDOWN_MS;
+  }
+
+  get lastDoubleClickTimestamp(): number {
+    return this.#lastDoubleClickTimestamp;
+  }
+
+  registerClick(now = Date.now()): "single_queued" | "double_triggered" | "double_cooldown_blocked" {
+    if (this.#clickTimer !== null) {
+      clearTimeout(this.#clickTimer);
+      this.#clickTimer = null;
+
+      if (this.#lastDoubleClickTimestamp === 0 || now - this.#lastDoubleClickTimestamp >= this.#doubleClickCooldownMs) {
+        this.#lastDoubleClickTimestamp = now;
+        const randomName =
+          HARMLESS_ANIMATION_NAMES[Math.floor(Math.random() * HARMLESS_ANIMATION_NAMES.length)];
+        this.#onDoubleClick(randomName);
+        return "double_triggered";
+      }
+      return "double_cooldown_blocked";
+    }
+
+    this.#clickTimer = setTimeout(() => {
+      this.#clickTimer = null;
+      this.#onSingleClick();
+    }, this.#clickDelayMs);
+
+    return "single_queued";
+  }
+
+  cancelPendingClick(): void {
+    if (this.#clickTimer !== null) {
+      clearTimeout(this.#clickTimer);
+      this.#clickTimer = null;
+    }
+  }
+
+  dispose(): void {
+    this.cancelPendingClick();
+  }
+}
+
 export type IpcPublicError = Readonly<{
   code: "INVALID_REQUEST" | "UNAVAILABLE" | "INTERNAL_ERROR";
   message: string;
@@ -187,6 +301,7 @@ export type MiloDesktopApi = Readonly<{
   openContextMenu(): Promise<void>;
   quit(): Promise<void>;
   onStateChanged(listener: (state: DesktopSnapshot) => void): () => void;
+  triggerCharacterAction(input: TriggerCharacterActionInput): Promise<void>;
 }>;
 
 export const IPC_CHANNELS = {
@@ -208,6 +323,7 @@ export const IPC_CHANNELS = {
   openContextMenu: "milo:open-context-menu",
   quit: "milo:quit",
   stateChanged: "milo:state-changed",
+  triggerCharacterAction: "milo:trigger-character-action",
 } as const;
 
 export const PRELOAD_METHOD_ALLOWLIST = [
@@ -229,6 +345,7 @@ export const PRELOAD_METHOD_ALLOWLIST = [
   "openContextMenu",
   "quit",
   "onStateChanged",
+  "triggerCharacterAction",
 ] as const satisfies readonly (keyof MiloDesktopApi)[];
 
 export const SYNTHETIC_SUGGESTIONS: readonly SyntheticSuggestion[] = Object.freeze([

@@ -1,18 +1,44 @@
-import type { DesktopState } from "../shared/contracts";
+import type { CharacterState, DesktopState } from "../shared/contracts";
 
-type MiloCatProps = Readonly<{ state: DesktopState; "aria-label"?: string }>;
+type MiloCatProps = Readonly<{
+  state: DesktopState | CharacterState;
+  "aria-label"?: string;
+  pupilOffset?: { x: number; y: number };
+}>;
 
-const STATE_LABELS: Record<DesktopState, string> = {
+const STATE_LABELS: Record<string, string> = {
   idle: "Milo is resting",
   noticed: "Milo noticed local activity",
   generating: "Milo is preparing suggestions",
   ready: "Suggestions are ready",
   paused: "Milo is paused",
   error: "Milo needs attention",
+  looking: "Milo is looking around",
+  dragging: "Milo is being moved",
+  drop: "Milo dropped",
+  pet: "Milo is being pet",
+  purring: "Milo is purring",
+  curious: "Milo is curious",
+  playful: "Milo is playful",
+  alert: "Milo noticed activity",
+  thinking: "Milo is thinking",
+  celebrating: "Milo is celebrating",
+  level_up: "Milo leveled up",
+  sleepy: "Milo is sleepy",
+  sleeping: "Milo is sleeping",
+  waking: "Milo is waking up",
+  offline: "Milo is offline",
 };
 
-export function MiloCat({ state, "aria-label": customAriaLabel }: MiloCatProps) {
-  const eyes = state === "paused" ? "paused" : state === "noticed" ? "wide" : "normal";
+export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset }: MiloCatProps) {
+  const isWide =
+    state === "noticed" ||
+    state === "alert" ||
+    state === "curious" ||
+    state === "playful" ||
+    state === "looking" ||
+    state === "dragging";
+  const eyes = state === "paused" || state === "sleeping" ? "paused" : isWide ? "wide" : "normal";
 
   return (
     <svg
@@ -74,13 +100,20 @@ export function MiloCat({ state, "aria-label": customAriaLabel }: MiloCatProps) 
         </g>
       ) : (
         <g className={`milo-cat__eyes milo-cat__eyes--${eyes}`} fill="var(--cat-feature)">
-          <ellipse cx="48" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
-          <ellipse cx="80" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
-          {/* Dual glints */}
-          <circle cx="46.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
-          <circle cx="50" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
-          <circle cx="78.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
-          <circle cx="82" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
+          <g
+            style={{
+              transform: `translate(${pupilOffset?.x ?? 0}px, ${pupilOffset?.y ?? 0}px)`,
+              transition: "transform 80ms ease-out",
+            }}
+          >
+            <ellipse cx="48" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
+            <ellipse cx="80" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
+            {/* Dual glints */}
+            <circle cx="46.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
+            <circle cx="50" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
+            <circle cx="78.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
+            <circle cx="82" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
+          </g>
         </g>
       )}
 

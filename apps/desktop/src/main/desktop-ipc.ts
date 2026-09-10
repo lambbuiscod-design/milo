@@ -5,11 +5,13 @@ import {
   desktopCapturer,
   globalShortcut,
   ipcMain,
+  screen,
   type BrowserWindow,
   type IpcMainInvokeEvent,
   type MenuItemConstructorOptions,
 } from "electron";
 import {
+  HARMLESS_ANIMATIONS,
   IPC_CHANNELS,
   SYNTHETIC_SUGGESTIONS,
   type ContextPreview,
@@ -21,6 +23,7 @@ import {
   type PublicSettings,
   type SyntheticSuggestion,
   type SuggestionResponse,
+  type TriggerCharacterActionInput,
   type WindowCandidate,
   type WindowSelectionResult,
   type WatchingState,
@@ -38,6 +41,7 @@ import {
   parsePreviewAction,
   parseSelectWindowInput,
   parseSettingsPatch,
+  parseTriggerCharacterActionInput,
 } from "../shared/validation";
 import { isTrustedSenderDescriptor } from "./security-policy";
 import type { OverlayController } from "./overlay-controller";
@@ -57,7 +61,8 @@ import {
 } from "./window-selection";
 import { WindowCaptureService } from "./window-capturer";
 import { DesktopOcrEngine, type DesktopOcrEngineApi } from "./ocr-engine";
-import { EventBus, MiloStateMachine, AnimationManager } from "./milo-core";
+import { EventBus, MiloStateMachine, AnimationManager, STATE_PRIORITIES } from "./milo-core";
+import { clampWithEdgePeeking, MIN_COMPANION_PEEK_PX } from "../shared/companion-bounds";
 
 class UnavailableError extends Error {
   constructor() {
@@ -81,6 +86,64 @@ type RegisterDesktopIpcOptions = Readonly<{
   characterStateMachine?: MiloStateMachine;
   animationManager?: AnimationManager;
 }>;
+
+export function createCompanionContextMenuTemplate(options: {
+  window: BrowserWindow;
+  companionWindow?: BrowserWindow | null;
+  overlay: OverlayController;
+  publish?: () => void;
+}): MenuItemConstructorOptions[] {
+  return [
+    {
+      label: "Open Milo",
+      click: () => {
+        options.overlay.setPanelOpen(true);
+        if (!options.window.isDestroyed()) {
+          options.window.showInactive();
+        }
+        options.publish?.();
+      },
+    },
+    {
+      label: "Milo Room",
+      click: () => {
+        options.overlay.setPanelOpen(true);
+        if (!options.window.isDestroyed()) {
+          options.window.showInactive();
+        }
+        options.publish?.();
+      },
+    },
+    {
+      label: "Customize",
+      click: () => {
+        options.overlay.setPanelOpen(true);
+        if (!options.window.isDestroyed()) {
+          options.window.showInactive();
+        }
+        options.publish?.();
+      },
+    },
+    {
+      label: "Settings",
+      click: () => {
+        options.overlay.setPanelOpen(true);
+        if (!options.window.isDestroyed()) {
+          options.window.showInactive();
+        }
+        options.publish?.();
+      },
+    },
+    {
+      label: "Hide Milo",
+      click: () => {
+        if (options.companionWindow && !options.companionWindow.isDestroyed()) {
+          options.companionWindow.hide();
+        }
+      },
+    },
+  ];
+}
 
 export function registerDesktopIpc({
   window,
@@ -431,16 +494,26 @@ export function registerDesktopIpc({
     Menu.buildFromTemplate(template).popup({ window });
   };
 
+  const showCompanionContextMenu = (targetWindow: BrowserWindow): void => {
+    const template = createCompanionContextMenuTemplate({
+      window,
+      companionWindow: targetWindow,
+      overlay,
+      publish,
+    });
+    Menu.buildFromTemplate(template).popup({ window: targetWindow });
+  };
+
   const allowedWindows: readonly BrowserWindow[] = companionWindow ? [window, companionWindow] : [window];
   const handlers = new Map<string, (event: IpcMainInvokeEvent, payload: unknown) => Promise<unknown>>();
   const handle = <T>(
     channel: string,
-    operation: (payload: unknown) => T | Promise<T>,
+    operation: (payload: unknown, event: IpcMainInvokeEvent) => T | Promise<T>,
   ): void => {
     const handler = async (event: IpcMainInvokeEvent, payload: unknown): Promise<IpcResult<T>> => {
       if (!isTrustedIpcSender(event, allowedWindows)) return invalidRequestResult();
       try {
-        return { ok: true, value: await operation(payload) };
+        return { ok: true, value: await operation(payload, event) };
       } catch (error) {
         if (error instanceof RequestValidationError) return invalidRequestResult();
         if (error instanceof UnavailableError) {
@@ -651,9 +724,64 @@ export function registerDesktopIpc({
     parseNoPayload(payload);
     overlay.reset();
   });
-  handle(IPC_CHANNELS.openContextMenu, (payload) => {
+  handle(IPC_CHANNELS.openContextMenu, (payload, event) => {
     parseNoPayload(payload);
-    showContextMenu();
+    if (companionWindow && !companionWindow.isDestroyed() && event.sender === companionWindow.webContents) {
+      showCompanionContextMenu(companionWindow);
+    } else {
+      showContextMenu();
+    }
+  });
+  handle(IPC_CHANNELS.triggerCharacterAction, (payload) => {
+    const input = parseTriggerCharacterActionInput(payload);
+    switch (input.action) {
+      case "drag_start": {
+        characterStateMachine.transition("DRAG_START");
+        break;
+      }
+      case "drag_move": {
+        if (companionWindow && !companionWindow.isDestroyed()) {
+          const bounds = companionWindow.getBounds();
+          const rawX = bounds.x + input.deltaX;
+          const rawY = bounds.y + input.deltaY;
+          const center = {
+            x: rawX + Math.round(bounds.width / 2),
+            y: rawY + Math.round(bounds.height / 2),
+          };
+          const display = screen.getDisplayNearestPoint(center);
+          const clamped = clampWithEdgePeeking(
+            { x: rawX, y: rawY },
+            { width: bounds.width, height: bounds.height },
+            display.workArea,
+            MIN_COMPANION_PEEK_PX,
+          );
+          companionWindow.setPosition(clamped.x, clamped.y, false);
+        }
+        break;
+      }
+      case "drag_end": {
+        characterStateMachine.transition("DRAG_END");
+        break;
+      }
+      case "look_around": {
+        if (characterStateMachine.currentState === "idle") {
+          characterStateMachine.transition("LOOK_AROUND");
+        }
+        break;
+      }
+      case "play_animation": {
+        const animName = input.animationName ?? "wave";
+        const config = HARMLESS_ANIMATIONS[animName] ?? HARMLESS_ANIMATIONS.wave;
+        animationManager.requestAnimation({
+          id: animName,
+          state: config.state,
+          durationMs: config.durationMs,
+          priority: STATE_PRIORITIES[config.state],
+          returnState: "idle",
+        });
+        break;
+      }
+    }
   });
   handle(IPC_CHANNELS.quit, (payload) => {
     parseNoPayload(payload);

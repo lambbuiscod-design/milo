@@ -21,6 +21,7 @@ import {
   type SuggestionResponse,
   type WindowSelectionResult,
   type WatchingState,
+  type TriggerCharacterActionInput,
 } from "./contracts";
 
 const MAX_IPC_PAYLOAD_BYTES = 4_096;
@@ -275,4 +276,24 @@ export function parseIpcResult(value: unknown): IpcResult<unknown> {
 export function parseCharacterStateSnapshot(value: unknown): CharacterStateSnapshot {
   return parse(characterStateSnapshotSchema, value);
 }
+
+export const triggerCharacterActionInputSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("drag_start") }).strict(),
+  z.object({
+    action: z.literal("drag_move"),
+    deltaX: z.number().finite().min(-2000).max(2000),
+    deltaY: z.number().finite().min(-2000).max(2000),
+  }).strict(),
+  z.object({ action: z.literal("drag_end") }).strict(),
+  z.object({ action: z.literal("look_around") }).strict(),
+  z.object({
+    action: z.literal("play_animation"),
+    animationName: z.string().min(1).max(64).optional(),
+  }).strict(),
+]);
+
+export function parseTriggerCharacterActionInput(value: unknown): TriggerCharacterActionInput {
+  return parse(triggerCharacterActionInputSchema, value);
+}
+
 

@@ -24,6 +24,7 @@ export const expectedPreloadMethods = Object.freeze([
   "setPanelOpen",
   "signIn",
   "signOut",
+  "triggerCharacterAction",
   "updateSettings",
 ]);
 
