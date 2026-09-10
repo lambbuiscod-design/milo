@@ -57,6 +57,7 @@ import {
 } from "./window-selection";
 import { WindowCaptureService } from "./window-capturer";
 import { DesktopOcrEngine, type DesktopOcrEngineApi } from "./ocr-engine";
+import { EventBus, MiloStateMachine, AnimationManager } from "./milo-core";
 
 class UnavailableError extends Error {
   constructor() {
@@ -76,6 +77,8 @@ type RegisterDesktopIpcOptions = Readonly<{
   windowCaptureService?: WindowCaptureService;
   ocrEngine?: DesktopOcrEngineApi;
   shortcutApi?: GlobalShortcutAdapter;
+  characterStateMachine?: MiloStateMachine;
+  animationManager?: AnimationManager;
 }>;
 
 export function registerDesktopIpc({
@@ -89,9 +92,26 @@ export function registerDesktopIpc({
   windowCaptureService: customWindowCaptureService,
   ocrEngine: customOcrEngine,
   shortcutApi,
+  characterStateMachine: customStateMachine,
+  animationManager: customAnimationManager,
 }: RegisterDesktopIpcOptions): () => void {
   const windowCaptureService = customWindowCaptureService ?? new WindowCaptureService(desktopCapturer);
   const ocrEngine = customOcrEngine ?? new DesktopOcrEngine();
+  const characterEventBus = new EventBus();
+  const characterStateMachine =
+    customStateMachine ??
+    new MiloStateMachine({
+      initialState: settingsStore.getPaused() ? "paused" : "idle",
+      eventBus: characterEventBus,
+    });
+  const animationManager =
+    customAnimationManager ??
+    new AnimationManager(characterStateMachine, characterStateMachine.eventBus);
+
+  const unsubscribeCharacterState = characterStateMachine.eventBus.subscribe("state:changed", () => {
+    publish();
+  });
+
   let state: DesktopState = settingsStore.getPaused() ? "paused" : "idle";
   let replies: SyntheticSuggestion[] = [];
   let lastAction: DesktopSnapshot["lastAction"] = "none";
@@ -127,6 +147,7 @@ export function registerDesktopIpc({
     },
     replies,
     lastAction,
+    character: animationManager.getCharacterSnapshot(),
   });
 
   const publish = (): DesktopSnapshot => {
@@ -140,6 +161,7 @@ export function registerDesktopIpc({
     settingsStore.setPaused(paused);
     state = transitionDesktopState(state, paused ? "pause" : "resume");
     if (paused) {
+      characterStateMachine.transition("PAUSE_TOGGLE");
       replies = [];
       clearContextPreview();
       contextChangeDetector.clear();
@@ -147,6 +169,8 @@ export function registerDesktopIpc({
       if (typeof overlay.setBubblesOpen === "function") {
         overlay.setBubblesOpen(false);
       }
+    } else {
+      characterStateMachine.transition("RESUME_TOGGLE");
     }
     lastAction = "none";
     publish();
@@ -591,10 +615,20 @@ export function registerDesktopIpc({
   });
   handle(IPC_CHANNELS.previewState, async (payload) => {
     const action = parsePreviewAction(payload);
-    if (action === "generate") await runSyntheticPreview();
-    else {
+    if (action === "generate") {
+      characterStateMachine.transition("ASK_MILO");
+      await runSyntheticPreview();
+      characterStateMachine.transition("SUGGESTIONS_READY");
+    } else {
       generationEpoch += 1;
       state = transitionDesktopState(state, action === "reset" ? "reset" : action);
+      if (action === "notice") {
+        characterStateMachine.transition("MESSAGE_NOTICED");
+      } else if (action === "fail") {
+        characterStateMachine.transition("ERROR_OCCURRED");
+      } else if (action === "reset") {
+        characterStateMachine.transition("RESET");
+      }
       replies = [];
       lastAction = "none";
       if (typeof overlay.setBubblesOpen === "function") {
@@ -631,6 +665,9 @@ export function registerDesktopIpc({
   return () => {
     clearInterval(selectionTimer);
     disposeSuggestionHotkey();
+    unsubscribeCharacterState();
+    characterStateMachine.dispose();
+    animationManager.dispose();
     generationEpoch += 1;
     replies = [];
     if (typeof overlay.setBubblesOpen === "function") {

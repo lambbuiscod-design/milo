@@ -15,8 +15,9 @@
     "tests/**/*.tsx",
     "src/main/**/*.ts",
     "src/shared/**/*.ts",
-    "src/renderer/components/primitives/**/*.ts",
-    "src/renderer/components/primitives/**/*.tsx",
+    "src/renderer/components/**/*.ts",
+    "src/renderer/components/**/*.tsx",
+    "src/renderer/window.d.ts",
     "src/types/**/*.d.ts"
   ]
 }

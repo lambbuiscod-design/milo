@@ -98,6 +98,48 @@ export type SuggestionResponse = Readonly<{
   replies: readonly SyntheticSuggestion[];
 }>;
 
+export const CHARACTER_STATES = [
+  "idle",
+  "looking",
+  "sleepy",
+  "sleeping",
+  "waking",
+  "dragging",
+  "drop",
+  "pet",
+  "purring",
+  "curious",
+  "playful",
+  "alert",
+  "thinking",
+  "ready",
+  "celebrating",
+  "level_up",
+  "paused",
+  "error",
+  "offline",
+] as const;
+
+export type CharacterState = (typeof CHARACTER_STATES)[number];
+
+export type CharacterAnimationSnapshot = Readonly<{
+  name: string;
+  state: CharacterState;
+  priority: number;
+  interruptible: boolean;
+  startedAt: number;
+  duration?: number;
+}>;
+
+export type CharacterStateSnapshot = Readonly<{
+  currentState: CharacterState;
+  previousState: CharacterState | null;
+  currentPriority: number;
+  activeAnimation: CharacterAnimationSnapshot | null;
+  lastTransitionTime: number;
+  transitionReason?: string;
+}>;
+
 export type DesktopSnapshot = Readonly<{
   state: DesktopState;
   panelOpen: boolean;
@@ -107,6 +149,7 @@ export type DesktopSnapshot = Readonly<{
   auth: AuthSummary;
   replies: readonly SyntheticSuggestion[];
   lastAction: "none" | "copied";
+  character?: CharacterStateSnapshot;
 }>;
 
 export type AskMiloInput = Readonly<{ mode?: "selected_window" | "screen_capture" }>;

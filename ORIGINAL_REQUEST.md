@@ -262,3 +262,36 @@ Install `better-sqlite3` (or equivalent standard SQLite library for Electron) an
 - [ ] No existing AI features or components are broken by the CSS/Token updates.
 - [ ] The SQLite dependency is correctly linked and a basic connection can be instantiated without native compilation errors in the Electron dev environment.
 - [ ] An artifact exists summarizing the audit and technical debt.
+
+## 2026-09-09T08:17:28Z
+
+Implement **Milestone 2** of the Milo V2 desktop companion upgrade. The goal of this milestone is to build the core Character Engine logic without the frontend transparent window yet.
+
+Working directory: C:\Users\abdul\Desktop\Buisness codex\milo
+Integrity mode: development
+
+## Requirements
+
+### R1. State Machine & Event Bus
+Create the central `MiloStateMachine` and `EventBus` in `apps/desktop/src/main/milo-core/` to manage the strict 19-state enum defined in the Milo V2 spec (idle, looking, sleeping, dragging, etc.).
+
+### R2. Animation Manager & Priorities
+Implement the `AnimationManager` that processes priority-based animation requests (e.g. 100 for dragging, 80 for level up, 0 for idle) and handles interruptions and return-states correctly.
+
+### R3. Basic Milo Renderer
+Create a React-based `MiloRenderer` in `apps/desktop/src/renderer/components/` that subscribes to the State Machine and visually reflects the current semantic state. Since real assets aren't hooked up yet, use placeholder visual feedback (e.g. colored boxes or text labels) to prove the state transitions work visually.
+
+### R4. Security Integrity
+Ensure absolutely zero AI/API calls are introduced. The state machine must be 100% deterministic and local.
+
+## Verification Resources
+Run `pnpm test`, `pnpm typecheck`, and the desktop security check script after the milestone.
+Create specific unit tests targeting state transitions and priority interruptions in the `AnimationManager`.
+
+## Acceptance Criteria
+
+### Verification & Testing
+- [ ] `MiloStateMachine` unit tests verify state transitions (e.g. idle -> dragging -> drop -> idle).
+- [ ] `AnimationManager` unit tests verify priority interruption (e.g. dragging at priority 100 interrupts idle at priority 0).
+- [ ] The desktop app compiles successfully (`pnpm --filter @milo/desktop build` passes).
+- [ ] Zero API calls are added to the codebase.

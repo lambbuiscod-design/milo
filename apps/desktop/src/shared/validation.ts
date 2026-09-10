@@ -1,5 +1,8 @@
 import { z } from "zod";
 import {
+  CHARACTER_STATES,
+  type CharacterAnimationSnapshot,
+  type CharacterStateSnapshot,
   DESKTOP_STATES,
   type AccountDestination,
   type AuthSummary,
@@ -94,6 +97,28 @@ const suggestionSchema = z
     explanation: z.string().max(360),
   })
   .strict();
+export const characterAnimationSnapshotSchema = z
+  .object({
+    name: z.string().min(1).max(64),
+    state: z.enum(CHARACTER_STATES),
+    priority: z.number().int().min(0).max(100),
+    interruptible: z.boolean(),
+    startedAt: z.number().int().nonnegative(),
+    duration: z.number().int().positive().optional(),
+  })
+  .strict();
+
+export const characterStateSnapshotSchema = z
+  .object({
+    currentState: z.enum(CHARACTER_STATES),
+    previousState: z.enum(CHARACTER_STATES).nullable(),
+    currentPriority: z.number().int().min(0).max(100),
+    activeAnimation: characterAnimationSnapshotSchema.nullable(),
+    lastTransitionTime: z.number().int().nonnegative(),
+    transitionReason: z.string().max(120).optional(),
+  })
+  .strict();
+
 const snapshotSchema = z
   .object({
     state: z.enum(DESKTOP_STATES),
@@ -110,6 +135,7 @@ const snapshotSchema = z
     auth: authSummarySchema,
     replies: z.array(suggestionSchema).max(3),
     lastAction: z.enum(["none", "copied"]),
+    character: characterStateSnapshotSchema.optional(),
   })
   .strict();
 const watchingSchema = z
@@ -245,3 +271,8 @@ export function parseAuthSummary(value: unknown): AuthSummary {
 export function parseIpcResult(value: unknown): IpcResult<unknown> {
   return parse(ipcResultSchema, value) as IpcResult<unknown>;
 }
+
+export function parseCharacterStateSnapshot(value: unknown): CharacterStateSnapshot {
+  return parse(characterStateSnapshotSchema, value);
+}
+

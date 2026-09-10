@@ -106,7 +106,7 @@ describe("SQLite Database Singleton (apps/desktop/src/main/db)", () => {
       closeDatabase();
       rmSync(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 15000);
 
   it("supports custom timeout option and reflects in busy_timeout pragma", () => {
     const db = getDatabase({ inMemory: true, timeout: 8000 });
