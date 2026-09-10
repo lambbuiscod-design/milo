@@ -295,3 +295,42 @@ Create specific unit tests targeting state transitions and priority interruption
 - [ ] `AnimationManager` unit tests verify priority interruption (e.g. dragging at priority 100 interrupts idle at priority 0).
 - [ ] The desktop app compiles successfully (`pnpm --filter @milo/desktop build` passes).
 - [ ] Zero API calls are added to the codebase.
+  
+# Teamwork Project Prompt — Draft
+
+> Status: Ready for launch — awaiting user approval.
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: [none — teamwork routes from the description]
+
+Implement **Milestone 3** of the Milo V2 desktop companion upgrade. The goal of this milestone is to implement the transparent desktop companion window logic in Electron without modifying the main React application logic.
+
+Working directory: C:\Users\abdul\Desktop\Buisness codex\milo
+Integrity mode: development
+
+## Requirements
+
+### R1. Transparent Frameless Window
+Create a new Electron `BrowserWindow` dedicated to the Desktop Companion. It must be transparent (`transparent: true`), frameless (`frame: false`), always-on-top (`alwaysOnTop: true`), skip the taskbar (`skipTaskbar: true`), and have a bounded size (e.g., width: 250px, height: 300px). 
+Ensure the web preferences are safely configured to match existing app standards. Do not remove the main application window; this is an additional companion window.
+
+### R2. Position Persistence
+Implement a position manager that saves the window's `(x, y, monitorId)` coordinates locally. 
+Whenever the window moves (dragged by the user), it should debounce the position change and persist it using the existing local storage mechanism or a new local file mechanism.
+
+### R3. Multi-monitor Recovery
+When the companion window is restored on restart, validate that the saved `monitorId` is currently connected. If the monitor is missing, safely fallback to centering the window on the primary display to prevent Milo from being permanently inaccessible off-screen.
+
+### R4. Screen Bounds Protection
+Implement screen bounds protection to ensure the companion window never becomes completely hidden off-screen. It should be constrained to always leave at least a 25px edge peeking into the visible screen area of the active monitor.
+
+## Verification Resources
+Run `pnpm test`, `pnpm typecheck`, and the desktop security check script after the milestone. 
+Ensure to add unit tests covering position persistence and multi-monitor recovery logic.
+
+## Acceptance Criteria
+
+### Verification & Testing
+- [ ] The desktop app compiles successfully (`pnpm --filter @milo/desktop build` passes).
+- [ ] Unit tests for the position manager verify debounce, save, and load behaviors.
+- [ ] Unit tests for multi-monitor recovery verify fallback to the primary monitor when a saved monitor is missing.
+- [ ] Zero API calls are added to the codebase.
