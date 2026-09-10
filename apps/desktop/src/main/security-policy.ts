@@ -3,6 +3,7 @@ import path from "node:path";
 export const MILO_PROTOCOL_SCHEME = "milo";
 export const MILO_RENDERER_ORIGIN = "milo://app";
 export const MILO_RENDERER_ENTRY = `${MILO_RENDERER_ORIGIN}/index.html`;
+export const MILO_COMPANION_ENTRY = `${MILO_RENDERER_ORIGIN}/companion.html`;
 export const MILO_RENDERER_PARTITION = "milo:overlay";
 
 export const CONTENT_SECURITY_POLICY = [

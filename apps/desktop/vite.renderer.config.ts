@@ -10,7 +10,10 @@ export default defineConfig({
     outDir: ".vite/renderer/main_window",
     sourcemap: false,
     rollupOptions: {
-      input: "index.html",
+      input: {
+        main: "index.html",
+        companion: "companion.html",
+      },
     },
   },
 });

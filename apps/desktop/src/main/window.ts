@@ -10,6 +10,7 @@ import {
 import { COLLAPSED_OVERLAY_SIZE } from "./overlay-controller";
 import {
   CONTENT_SECURITY_POLICY,
+  MILO_COMPANION_ENTRY,
   MILO_RENDERER_ENTRY,
   SECURE_WEB_PREFERENCES,
   isAllowedApplicationUrl,
@@ -35,6 +36,31 @@ export function createOverlayWindow(preloadPath: string): BrowserWindow {
     resizable: false,
     hasShadow: false,
     autoHideMenuBar: true,
+    webPreferences: {
+      ...SECURE_WEB_PREFERENCES,
+      preload: preloadPath,
+    },
+  });
+}
+
+export function createCompanionWindow(preloadPath: string): BrowserWindow {
+  return new BrowserWindow({
+    width: 250,
+    height: 300,
+    show: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    frame: false,
+    title: "Milo Companion",
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    resizable: false,
+    autoHideMenuBar: true,
+    focusable: false,
+    fullscreenable: false,
+    maximizable: false,
+    minimizable: false,
     webPreferences: {
       ...SECURE_WEB_PREFERENCES,
       preload: preloadPath,
@@ -109,6 +135,10 @@ export function registerRendererProtocol(rendererSession: Session, rendererRoot:
 
 export async function loadRenderer(window: BrowserWindow): Promise<void> {
   await window.loadURL(MILO_RENDERER_ENTRY);
+}
+
+export async function loadCompanion(window: BrowserWindow): Promise<void> {
+  await window.loadURL(MILO_COMPANION_ENTRY);
 }
 
 function createAssetManifest(rendererRoot: string): ReadonlySet<string> {

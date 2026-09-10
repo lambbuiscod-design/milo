@@ -22,10 +22,13 @@ import { createElectronRefreshTokenStore } from "./electron-auth-store";
 import { createNodeLoopbackCallbackServer } from "./loopback-callback-server";
 import { DesktopSuggestionClient } from "./desktop-suggestion-client";
 import { createAccountBrowserOpener } from "./electron-account-browser";
+import { CompanionPositionManager } from "./companion-position-manager";
 import {
+  createCompanionWindow,
   createOverlayWindow,
   hardenRendererSession,
   hardenWebContents,
+  loadCompanion,
   loadRenderer,
   registerRendererProtocol,
 } from "./window";
@@ -53,12 +56,15 @@ app.enableSandbox();
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 let overlayWindow: BrowserWindow | null = null;
+let companionWindow: BrowserWindow | null = null;
+let companionPositionManager: CompanionPositionManager | null = null;
 
 if (!hasSingleInstanceLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
     if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.showInactive();
+    if (companionWindow && !companionWindow.isDestroyed()) companionWindow.showInactive();
   });
 
   app.on("web-contents-created", (_event, contents) => {
@@ -129,6 +135,16 @@ if (!hasSingleInstanceLock) {
       overlayWindow = window;
       const overlay = new OverlayController(window, settingsStore);
       overlay.initialize();
+
+      const companion = createCompanionWindow(preloadPath);
+      companionWindow = companion;
+      companionPositionManager = new CompanionPositionManager({
+        userDataDirectory: app.getPath("userData"),
+      });
+      companionPositionManager.attachWindow(companion);
+      const companionPosition = companionPositionManager.loadInitialPosition();
+      companion.setBounds({ ...companionPosition, width: 250, height: 300 }, false);
+
       const nativeHelper = new NativeHelperClient({
         pathContext: {
           appPath: app.getAppPath(),
@@ -138,6 +154,7 @@ if (!hasSingleInstanceLock) {
       });
       const disposeIpc = registerDesktopIpc({
         window,
+        companionWindow: companion,
         overlay,
         settingsStore,
         nativeHelper,
@@ -157,7 +174,16 @@ if (!hasSingleInstanceLock) {
         overlayWindow = null;
       });
 
-      await loadRenderer(window);
+      companion.setAlwaysOnTop(true, "floating");
+      companion.once("ready-to-show", () => companion.showInactive());
+      companion.webContents.on("render-process-gone", () => app.quit());
+      companion.on("closed", () => {
+        companionPositionManager?.dispose();
+        companionPositionManager = null;
+        companionWindow = null;
+      });
+
+      await Promise.all([loadRenderer(window), loadCompanion(companion)]);
     })
     .catch(() => {
       app.exit(1);
@@ -167,5 +193,6 @@ if (!hasSingleInstanceLock) {
 app.on("window-all-closed", () => app.quit());
 
 app.on("will-quit", () => {
+  companionPositionManager?.flush();
   closeDatabase();
 });

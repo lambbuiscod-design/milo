@@ -68,6 +68,7 @@ class UnavailableError extends Error {
 
 type RegisterDesktopIpcOptions = Readonly<{
   window: BrowserWindow;
+  companionWindow?: BrowserWindow | null;
   overlay: OverlayController;
   settingsStore: ContentFreeSettingsStore;
   nativeHelper: NativeHelperClient;
@@ -83,6 +84,7 @@ type RegisterDesktopIpcOptions = Readonly<{
 
 export function registerDesktopIpc({
   window,
+  companionWindow,
   overlay,
   settingsStore,
   nativeHelper,
@@ -153,6 +155,9 @@ export function registerDesktopIpc({
   const publish = (): DesktopSnapshot => {
     const value = snapshot();
     if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.stateChanged, value);
+    if (companionWindow && !companionWindow.isDestroyed()) {
+      companionWindow.webContents.send(IPC_CHANNELS.stateChanged, value);
+    }
     return value;
   };
 
@@ -426,13 +431,14 @@ export function registerDesktopIpc({
     Menu.buildFromTemplate(template).popup({ window });
   };
 
+  const allowedWindows: readonly BrowserWindow[] = companionWindow ? [window, companionWindow] : [window];
   const handlers = new Map<string, (event: IpcMainInvokeEvent, payload: unknown) => Promise<unknown>>();
   const handle = <T>(
     channel: string,
     operation: (payload: unknown) => T | Promise<T>,
   ): void => {
     const handler = async (event: IpcMainInvokeEvent, payload: unknown): Promise<IpcResult<T>> => {
-      if (!isTrustedIpcSender(event, window)) return invalidRequestResult();
+      if (!isTrustedIpcSender(event, allowedWindows)) return invalidRequestResult();
       try {
         return { ok: true, value: await operation(payload) };
       } catch (error) {
@@ -682,8 +688,15 @@ export function registerDesktopIpc({
   };
 }
 
-function isTrustedIpcSender(event: IpcMainInvokeEvent, window: BrowserWindow): boolean {
-  if (window.isDestroyed() || event.sender !== window.webContents || event.sender.isDestroyed()) {
+function isTrustedIpcSender(
+  event: IpcMainInvokeEvent,
+  windowOrWindows: BrowserWindow | readonly BrowserWindow[],
+): boolean {
+  const allowedWindows = Array.isArray(windowOrWindows) ? windowOrWindows : [windowOrWindows];
+  const matchingWindow = allowedWindows.find(
+    (w) => !w.isDestroyed() && w.webContents === event.sender,
+  );
+  if (!matchingWindow || event.sender.isDestroyed()) {
     return false;
   }
   const senderFrame = event.senderFrame;
@@ -692,7 +705,7 @@ function isTrustedIpcSender(event: IpcMainInvokeEvent, window: BrowserWindow): b
   }
   return isTrustedSenderDescriptor({
     senderId: event.sender.id,
-    expectedSenderId: window.webContents.id,
+    expectedSenderId: matchingWindow.webContents.id,
     isMainFrame: true,
     url: senderFrame.url,
   });
