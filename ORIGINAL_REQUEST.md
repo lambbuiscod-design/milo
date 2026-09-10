@@ -334,3 +334,42 @@ Ensure to add unit tests covering position persistence and multi-monitor recover
 - [ ] Unit tests for the position manager verify debounce, save, and load behaviors.
 - [ ] Unit tests for multi-monitor recovery verify fallback to the primary monitor when a saved monitor is missing.
 - [ ] Zero API calls are added to the codebase.
+  
+## 2026-09-10T17:35:00Z  
+  
+# Teamwork Project Prompt — Draft
+
+> Status: Ready for launch — awaiting user approval.
+> Goal: Craft prompt → delegate to teamwork_preview
+> Requested team: [none — teamwork routes from the description]
+
+Implement **Milestone 4** of the Milo V2 desktop companion upgrade. The goal of this milestone is to implement the interaction layer (Hover, Drag, Drop, Clicks) for the companion window, mapping them to the core Character Engine we built in Milestone 2.
+
+Working directory: C:\Users\abdul\Desktop\Buisness codex\milo
+Integrity mode: development
+
+## Requirements
+
+### R1. Companion Interactions (Hover, Drag, Drop)
+In `companion.tsx`, add event listeners for the character (hovering, dragging). When the user clicks and holds, trigger the `dragging` state in the State Machine via IPC. When they release, trigger `dropping` or `idle`. Add "cursor eyes" logic where the character looks towards the cursor when hovered or nearby if possible. Note: this should only send lightweight state transitions to the `MiloStateMachine` which was built in M2.
+
+### R2. Single Click Menu
+When the user single-clicks the companion, a small local native context menu or floating overlay should appear with the following items:
+- Open Milo
+- Milo Room
+- Customize
+- Settings
+- Hide Milo
+There must be absolutely no AI actions or API calls in this menu.
+
+### R3. Double Click Animation
+When the user double-clicks the companion, randomly trigger a harmless animation state (e.g., `wave`, `jump`, `spin`, `happy`, `surprised`, `tiny dance`). This must include a 1-2 second cooldown to prevent event spam.
+
+## Verification Resources
+Run `pnpm test`, `pnpm typecheck`, and the desktop security check script after the milestone. 
+
+## Acceptance Criteria
+- [ ] The desktop app compiles successfully (`pnpm --filter @milo/desktop build` passes).
+- [ ] Unit tests for the interaction handlers verify the cooldowns and state transitions.
+- [ ] The `MiloStateMachine` correctly processes these interaction events.
+- [ ] Zero API calls are added to the codebase.
