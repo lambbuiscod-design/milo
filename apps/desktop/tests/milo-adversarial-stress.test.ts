@@ -335,7 +335,7 @@ describe("MiloStateMachine & EventBus Adversarial Stress Suite (Challenger)", ()
         }
       }
 
-      expect(totalTests).toBe(19 * 19); // 361 combinations
+      expect(totalTests).toBe(25 * 19); // 475 combinations
       expect(totalAcceptances).toBeGreaterThan(0);
       expect(totalRejections).toBeGreaterThan(200); // Matrix is mostly restricted
 

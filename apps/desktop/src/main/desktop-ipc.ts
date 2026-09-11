@@ -54,6 +54,7 @@ import { ContextChangeDetector } from "./context-change-detector";
 import { extractLocalContext } from "./local-context-extractor";
 import { registerSuggestionHotkey, type GlobalShortcutAdapter } from "./suggestion-hotkey";
 import { IdleManager } from "./idle-manager";
+import { ReactionManager } from "./milo-core";
 import {
   bindNativeWindowIdentity,
   selectFreshWindow,
@@ -177,6 +178,9 @@ export function registerDesktopIpc({
   // Milestone 5: Idle Manager
   const idleManager = new IdleManager(characterStateMachine, animationManager);
   idleManager.start();
+
+  // Milestone 6: Reaction Manager
+  const reactionManager = new ReactionManager(characterStateMachine, animationManager);
 
   const unsubscribeCharacterState = characterStateMachine.eventBus.subscribe("state:changed", () => {
     publish();
@@ -777,14 +781,20 @@ export function registerDesktopIpc({
       }
       case "play_animation": {
         const animName = input.animationName ?? "wave";
-        const config = HARMLESS_ANIMATIONS[animName] ?? HARMLESS_ANIMATIONS.wave;
-        animationManager.requestAnimation({
-          id: animName,
-          state: config.state,
-          durationMs: config.durationMs,
-          priority: STATE_PRIORITIES[config.state],
-          returnState: "idle",
-        });
+        if (animName === "surprised") {
+          reactionManager.trigger("surprised");
+        } else if (animName === "happy") {
+          reactionManager.trigger("happy");
+        } else {
+          const config = HARMLESS_ANIMATIONS[animName] ?? HARMLESS_ANIMATIONS.wave;
+          animationManager.requestAnimation({
+            id: animName,
+            state: config.state,
+            durationMs: config.durationMs,
+            priority: STATE_PRIORITIES[config.state],
+            returnState: "idle",
+          });
+        }
         break;
       }
     }

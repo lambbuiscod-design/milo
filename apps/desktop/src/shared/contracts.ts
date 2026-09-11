@@ -118,6 +118,12 @@ export const CHARACTER_STATES = [
   "paused",
   "error",
   "offline",
+  "happy",
+  "laughing",
+  "surprised",
+  "confident",
+  "annoyed",
+  "affectionate",
 ] as const;
 
 export type CharacterState = (typeof CHARACTER_STATES)[number];

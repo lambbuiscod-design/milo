@@ -10,7 +10,7 @@ describe("IdleManager", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     const eventBus = new EventBus();
-    stateMachine = new MiloStateMachine(eventBus);
+    stateMachine = new MiloStateMachine({ eventBus });
     animationManager = new AnimationManager(stateMachine);
     idleManager = new IdleManager(stateMachine, animationManager);
   });

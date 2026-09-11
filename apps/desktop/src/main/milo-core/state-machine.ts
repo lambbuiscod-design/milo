@@ -51,6 +51,12 @@ const TRANSITION_RULES: Readonly<Record<MiloStateEvent, TransitionRule>> = Objec
       "celebrating",
       "level_up",
       "error",
+      "happy",
+      "laughing",
+      "surprised",
+      "confident",
+      "annoyed",
+      "affectionate",
     ],
   },
   LOOK_AROUND: {

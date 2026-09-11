@@ -55,6 +55,12 @@ export const STATE_PRIORITIES: Readonly<Record<CharacterState, number>> = Object
   level_up: 80, // Major progression fanfare
   celebrating: 75, // Achievement / copy / streak milestone
   thinking: 70, // AI suggestion generation active
+  happy: 70, // Emotional reaction
+  laughing: 70, // Emotional reaction
+  surprised: 70, // Emotional reaction
+  confident: 70, // Emotional reaction
+  annoyed: 70, // Emotional reaction
+  affectionate: 70, // Emotional reaction
   ready: 65, // Suggestions ready & bubbles visible
   pet: 60, // Direct user affection interaction
   error: 50, // Diagnostic error feedback
@@ -94,6 +100,12 @@ export const STATE_DURATIONS: Readonly<Record<CharacterState, number>> = Object.
   paused: 0,
   error: 8000,
   offline: 0,
+  happy: 2500,
+  laughing: 2500,
+  surprised: 2000,
+  confident: 3000,
+  annoyed: 2500,
+  affectionate: 2500,
 });
 
 /**

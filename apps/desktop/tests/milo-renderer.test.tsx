@@ -45,9 +45,9 @@ describe("MiloRenderer Component (Milestone 2 Requirement R3)", () => {
     expect(html).toContain("Level Up!");
   });
 
-  it("renders all 19 states with valid labels and categories", () => {
+  it("renders all 25 states with valid labels and categories", () => {
     const states = Object.keys(STATE_METADATA) as (keyof typeof STATE_METADATA)[];
-    expect(states.length).toBe(19);
+    expect(states.length).toBe(25);
 
     for (const state of states) {
       const meta = STATE_METADATA[state];
