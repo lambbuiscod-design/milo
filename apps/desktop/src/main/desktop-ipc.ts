@@ -53,6 +53,7 @@ import { normalizeRecentContext } from "./context-normalizer";
 import { ContextChangeDetector } from "./context-change-detector";
 import { extractLocalContext } from "./local-context-extractor";
 import { registerSuggestionHotkey, type GlobalShortcutAdapter } from "./suggestion-hotkey";
+import { IdleManager } from "./idle-manager";
 import {
   bindNativeWindowIdentity,
   selectFreshWindow,
@@ -171,7 +172,11 @@ export function registerDesktopIpc({
     });
   const animationManager =
     customAnimationManager ??
-    new AnimationManager(characterStateMachine, characterStateMachine.eventBus);
+    new AnimationManager(characterStateMachine);
+
+  // Milestone 5: Idle Manager
+  const idleManager = new IdleManager(characterStateMachine, animationManager);
+  idleManager.start();
 
   const unsubscribeCharacterState = characterStateMachine.eventBus.subscribe("state:changed", () => {
     publish();
@@ -512,6 +517,7 @@ export function registerDesktopIpc({
   ): void => {
     const handler = async (event: IpcMainInvokeEvent, payload: unknown): Promise<IpcResult<T>> => {
       if (!isTrustedIpcSender(event, allowedWindows)) return invalidRequestResult();
+      idleManager.touch();
       try {
         return { ok: true, value: await operation(payload, event) };
       } catch (error) {
