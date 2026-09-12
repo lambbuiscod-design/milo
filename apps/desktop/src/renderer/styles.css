@@ -3032,8 +3032,32 @@ h1#panel-title {
   width: 54px;
   height: 54px;
   transform-origin: center bottom;
-  pointer-events: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
 }
+
+.room-item:active { cursor: grabbing; }
+.room-item.is-selected { filter: drop-shadow(0 0 8px var(--milo-coral-glow)); }
+.room-item:focus-visible { outline: 2px solid var(--milo-coral); outline-offset: 3px; }
+
+.room-editor__body { display: flex; flex-direction: column; height: 100%; }
+.room-editor .settings-header > div { min-width: 0; }
+.room-editor .settings-header p { margin: 3px 0 0; color: var(--text-secondary); font-size: 12px; }
+.room-editor__stage {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  flex: 0 0 200px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--surface-secondary) 0 72%, var(--surface-sunken) 72% 100%);
+}
+.room-editor__milo { position: absolute; bottom: 12px; left: 50%; width: 92px; transform: translateX(-50%); pointer-events: none; }
+.room-editor__palette { margin-top: 16px; }
 
 .room-item--plant span {
   position: absolute;

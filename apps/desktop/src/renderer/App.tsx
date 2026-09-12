@@ -15,6 +15,8 @@ import {
   type PanelPlacement,
   type PositionDirection,
   type PublicSettingsPatch,
+  type RoomItemState,
+  type RoomState,
   type SyntheticSuggestion,
   type ThemePreference,
   type ToneProfile,
@@ -22,6 +24,7 @@ import {
 } from "../shared/contracts";
 import { shouldReduceMotion } from "../shared/motion";
 import { requiredLevelForReward } from "../shared/progression";
+import { clampRoomItemPosition } from "../shared/room-layout";
 import {
   AlertIcon,
   CheckIcon,
@@ -1186,62 +1189,14 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
           )}
 
           {appViewState === "room" && (
-            <div className="settings-layout">
-              <div className="settings-header">
-                <h2>Milo&apos;s Room</h2>
-                <button className="text-button" type="button" onClick={() => setAppViewState("home")}>Done</button>
-              </div>
-              <div className="settings-body" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                <div style={{ position: "relative", width: "100%", height: 200, backgroundColor: "var(--bg-surface)", overflow: "hidden", borderRadius: "var(--radius-small)" }}>
-                  {snapshot.settings.room?.items?.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`room-item room-item--${item.id}`}
-                      aria-label={item.id}
-                      style={{ left: item.x, top: item.y, transform: `scale(${item.scale}) rotate(${item.rotation ?? 0}deg)` }}
-                    >
-                      <span aria-hidden="true" />
-                    </div>
-                  ))}
-                  <div style={{ position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)" }}>
-                    <MiloCat state={snapshot.state} appearance={snapshot.settings.appearance} />
-                  </div>
-                </div>
-                <div className="settings-block" style={{ marginTop: 16 }}>
-                  <h3 className="settings-block__title">Furniture</h3>
-                  <div className="tone-cards-grid">
-                    {["plant", "rug", "lamp"].map((id, index) => {
-                      const items = snapshot.settings.room?.items ?? [];
-                      const hasItem = items.some((item) => item.id === id);
-                      const rewardId = `room-${id}`;
-                      const requiredLevel = requiredLevelForReward(rewardId);
-                      const isUnlocked = unlockedRewards.has(rewardId);
-                      return (
-                        <button
-                          key={id}
-                          className={`tone-card ${hasItem ? "tone-card--selected" : ""}`}
-                          disabled={!isUnlocked}
-                          aria-label={isUnlocked ? `${id} furniture` : `${id} furniture unlocks at level ${requiredLevel}`}
-                          onClick={() => {
-                            const newItems = hasItem
-                              ? items.filter((item) => item.id !== id)
-                              : [...items, { id, x: 36 + index * 82, y: 84 + (index % 2) * 28, scale: 1 }];
-                            void updateSettings({
-                              room: {
-                                background: snapshot.settings.room?.background ?? "default",
-                                items: newItems,
-                              },
-                            });
-                          }}
-                        >
-                          <div className="tone-card__text"><strong>{id}</strong>{!isUnlocked && <small>Level {requiredLevel}</small>}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <RoomEditor
+              room={snapshot.settings.room ?? { background: "default", items: [] }}
+              appearance={appearance}
+              state={snapshot.state}
+              unlockedRewards={unlockedRewards}
+              onDone={() => setAppViewState("home")}
+              onChange={(room) => void updateSettings({ room })}
+            />
           )}
 
 <footer className="panel__footer">
@@ -1263,5 +1218,115 @@ function StateMark({ state }: Readonly<{ state: DesktopState }>) {
     <span className={`state-mark state-mark--${state}`} aria-hidden="true">
       {state === "paused" ? <PauseIcon /> : state === "error" ? <AlertIcon /> : state === "ready" ? <CheckIcon /> : state === "generating" ? <SparkIcon /> : <span />}
     </span>
+  );
+}
+
+const ROOM_ITEM_IDS = ["plant", "rug", "lamp"] as const;
+const ROOM_ITEM_SIZE = 54;
+
+function RoomEditor({ room, appearance, state, unlockedRewards, onChange, onDone }: Readonly<{
+  room: RoomState;
+  appearance: MiloAppearance;
+  state: DesktopState;
+  unlockedRewards: ReadonlySet<string>;
+  onChange: (room: RoomState) => void;
+  onDone: () => void;
+}>) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const [draftItems, setDraftItems] = useState<RoomItemState[]>(room.items);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const commit = (items: RoomItemState[]) => {
+    setDraftItems(items);
+    onChange({ ...room, items });
+  };
+  const moveItem = (id: string, x: number, y: number, persist: boolean) => {
+    const stage = stageRef.current?.getBoundingClientRect();
+    const position = clampRoomItemPosition(
+      x,
+      y,
+      { width: stage?.width ?? 500, height: stage?.height ?? 200 },
+      { width: ROOM_ITEM_SIZE, height: ROOM_ITEM_SIZE },
+    );
+    const items = draftItems.map((item) => item.id === id
+      ? { ...item, ...position }
+      : item);
+    setDraftItems(items);
+    if (persist) onChange({ ...room, items });
+  };
+
+  return (
+    <div className="settings-layout room-editor">
+      <div className="settings-header">
+        <div><h2>{"Milo's Room"}</h2><p>Drag furniture, or use arrow keys. Press Delete to remove a selected item.</p></div>
+        <button className="text-button" type="button" onClick={onDone}>Done</button>
+      </div>
+      <div className="settings-body room-editor__body">
+        <div ref={stageRef} className="room-editor__stage" aria-label="Milo room canvas">
+          {draftItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`room-item room-item--${item.id} ${selectedId === item.id ? "is-selected" : ""}`}
+              aria-label={`${item.id} furniture. Use arrow keys to move or Delete to remove.`}
+              style={{ left: item.x, top: item.y, transform: `scale(${item.scale}) rotate(${item.rotation ?? 0}deg)` }}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+                setSelectedId(item.id);
+                dragRef.current = { id: item.id, startX: event.clientX, startY: event.clientY, originX: item.x, originY: item.y };
+              }}
+              onPointerMove={(event) => {
+                const drag = dragRef.current;
+                if (!drag || drag.id !== item.id) return;
+                moveItem(item.id, drag.originX + event.clientX - drag.startX, drag.originY + event.clientY - drag.startY, false);
+              }}
+              onPointerUp={(event) => {
+                const drag = dragRef.current;
+                if (!drag || drag.id !== item.id) return;
+                moveItem(item.id, drag.originX + event.clientX - drag.startX, drag.originY + event.clientY - drag.startY, true);
+                dragRef.current = null;
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onKeyDown={(event) => {
+                const step = event.shiftKey ? 10 : 4;
+                const delta = event.key === "ArrowLeft" ? [-step, 0] : event.key === "ArrowRight" ? [step, 0] : event.key === "ArrowUp" ? [0, -step] : event.key === "ArrowDown" ? [0, step] : null;
+                if (delta) {
+                  event.preventDefault();
+                  moveItem(item.id, item.x + delta[0], item.y + delta[1], true);
+                } else if (event.key === "Delete") {
+                  event.preventDefault();
+                  commit(draftItems.filter((candidate) => candidate.id !== item.id));
+                  setSelectedId(null);
+                }
+              }}
+            ><span aria-hidden="true" /></button>
+          ))}
+          <div className="room-editor__milo"><MiloCat state={state} appearance={appearance} /></div>
+        </div>
+        <div className="settings-block room-editor__palette">
+          <div className="section-heading"><h3 className="settings-block__title">Furniture</h3><button className="text-button" type="button" disabled={draftItems.length === 0} onClick={() => commit([])}>Reset room</button></div>
+          <div className="tone-cards-grid">
+            {ROOM_ITEM_IDS.map((id, index) => {
+              const hasItem = draftItems.some((item) => item.id === id);
+              const requiredLevel = requiredLevelForReward(`room-${id}`);
+              const isUnlocked = unlockedRewards.has(`room-${id}`);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={`tone-card ${hasItem ? "tone-card--selected" : ""}`}
+                  disabled={!isUnlocked}
+                  aria-label={isUnlocked ? `${hasItem ? "Remove" : "Add"} ${id}` : `${id} unlocks at level ${requiredLevel}`}
+                  onClick={() => commit(hasItem
+                    ? draftItems.filter((item) => item.id !== id)
+                    : [...draftItems, { id, x: 36 + index * 82, y: 92, scale: 1 }])}
+                ><span className="tone-card__text"><strong>{id}</strong>{!isUnlocked && <small>Level {requiredLevel}</small>}</span></button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
