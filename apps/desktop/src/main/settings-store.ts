@@ -14,6 +14,7 @@ import path from "node:path";
 import { z } from "zod";
 import type { Point } from "../shared/position";
 import type { PublicSettings, PublicSettingsPatch } from "../shared/contracts";
+import { rewardsUnlockedThroughLevel } from "../shared/progression";
 
 const MAX_SETTINGS_BYTES = 32_768;
 const positionSchema = z
@@ -49,6 +50,7 @@ const progressSchema = z
     level: z.number().int().min(1).max(100).default(1),
     firstMetAt: z.string().datetime().default(() => new Date().toISOString()),
     currentStreak: z.number().int().min(0).max(10_000).default(0),
+    unlockedRewards: z.array(cosmeticIdSchema).max(64).default(() => [...rewardsUnlockedThroughLevel(1)]),
   })
   .strict();
 const roomItemSchema = z
@@ -95,6 +97,7 @@ const persistedSettingsV1Schema = z
       level: 1,
       firstMetAt: new Date().toISOString(),
       currentStreak: 0,
+      unlockedRewards: [...rewardsUnlockedThroughLevel(1)],
     }),
     room: roomSchema.default({ background: "default", items: [] }),
     paused: z.boolean(),
@@ -117,6 +120,27 @@ const persistedSettingsSchema = persistedSettingsV1Schema.extend({
 
 type PersistedSettings = z.infer<typeof persistedSettingsSchema>;
 
+function preserveEarnedAndSelectedRewards(settings: PersistedSettings): PersistedSettings {
+  const selectedRewards = [
+    `fur-${settings.appearance.fur}`,
+    `animation-${settings.appearance.animationPersonality}`,
+    ...settings.room.items.map((item) => `room-${item.id}`),
+  ];
+  return persistedSettingsSchema.parse({
+    ...settings,
+    progress: {
+      ...settings.progress,
+      unlockedRewards: [
+        ...new Set([
+          ...settings.progress.unlockedRewards,
+          ...rewardsUnlockedThroughLevel(settings.progress.level),
+          ...selectedRewards,
+        ]),
+      ],
+    },
+  });
+}
+
 const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
   version: 2,
   theme: "system",
@@ -135,7 +159,7 @@ const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
   language: "system",
   catAppearance: "charcoal",
   appearance: { fur: "charcoal" as const, eyes: "classic", accessories: {}, animationPersonality: "calm" as const },
-  progress: { xp: 0, level: 1, firstMetAt: new Date().toISOString(), currentStreak: 0 },
+  progress: { xp: 0, level: 1, firstMetAt: new Date().toISOString(), currentStreak: 0, unlockedRewards: [...rewardsUnlockedThroughLevel(1)] },
   room: { background: "default", items: [] },
   xpPolicy: { lastAwardAt: 0, awardDay: null, dailyEarned: 0 },
   paused: false,
@@ -181,6 +205,15 @@ export class ContentFreeSettingsStore {
   updatePublicSettings(patch: PublicSettingsPatch): PublicSettings {
     const appearance = patch.appearance ?? this.#settings.appearance;
     const catAppearance = patch.catAppearance ?? appearance.fur;
+    const unlocked = new Set(this.#settings.progress.unlockedRewards);
+    const requestedRewards = [
+      `fur-${catAppearance}`,
+      `animation-${appearance.animationPersonality}`,
+      ...(patch.room?.items ?? []).map((item) => `room-${item.id}`),
+    ];
+    if (requestedRewards.some((reward) => !unlocked.has(reward))) {
+      throw new Error("MILO_REWARD_LOCKED");
+    }
     this.#settings = persistedSettingsSchema.parse({
       ...this.#settings,
       ...patch,
@@ -251,6 +284,7 @@ export class ContentFreeSettingsStore {
         xp: newXp,
         level: newLevel,
         currentStreak,
+        unlockedRewards: [...new Set([...current.unlockedRewards, ...rewardsUnlockedThroughLevel(newLevel)])],
       },
       xpPolicy: { lastAwardAt: nowMs, awardDay: today, dailyEarned: dailyEarned + amount },
     });
@@ -279,17 +313,18 @@ export class ContentFreeSettingsStore {
       }
       const parsed: unknown = JSON.parse(readFileSync(this.#filePath, "utf8"));
       const current = persistedSettingsSchema.safeParse(parsed);
-      if (current.success) return current.data;
+      if (current.success) return preserveEarnedAndSelectedRewards(current.data);
       const legacy = persistedSettingsV1Schema.safeParse(parsed);
       if (legacy.success) {
         const migrated = persistedSettingsSchema.parse({
           ...legacy.data,
           version: 2,
+          appearance: { ...legacy.data.appearance, fur: legacy.data.catAppearance },
           xpPolicy: { lastAwardAt: 0, awardDay: null, dailyEarned: 0 },
         });
-        this.#settings = migrated;
+        this.#settings = preserveEarnedAndSelectedRewards(migrated);
         this.#write();
-        return migrated;
+        return this.#settings;
       }
       return { ...DEFAULT_SETTINGS, overlayPositions: {} };
     } catch {

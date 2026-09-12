@@ -413,6 +413,7 @@ export interface MiloProgress {
   level: number;
   firstMetAt: string;
   currentStreak: number;
+  unlockedRewards: string[];
 }
 
 export interface RoomItemState {

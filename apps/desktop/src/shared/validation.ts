@@ -55,6 +55,7 @@ const progressSchema = z
     level: z.number().int().min(1).max(100),
     firstMetAt: z.string().datetime(),
     currentStreak: z.number().int().min(0).max(10_000),
+    unlockedRewards: z.array(cosmeticIdSchema).max(64),
   })
   .strict();
 const roomSchema = z

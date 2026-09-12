@@ -21,6 +21,7 @@ import {
   type WindowCandidate,
 } from "../shared/contracts";
 import { shouldReduceMotion } from "../shared/motion";
+import { requiredLevelForReward } from "../shared/progression";
 import {
   AlertIcon,
   CheckIcon,
@@ -107,6 +108,7 @@ const INITIAL_SNAPSHOT: DesktopSnapshot = {
       level: 1,
       firstMetAt: "2026-01-01T00:00:00.000Z",
       currentStreak: 0,
+      unlockedRewards: ["fur-charcoal", "animation-calm", "room-plant"],
     },
     room: { background: "default", items: [] },
   },
@@ -257,6 +259,7 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
   const canSuggest = isAuthenticated && selectedWindowTitle !== undefined && snapshot.state !== "paused" && !busy && !authBusy;
   const appearance = snapshot.settings.appearance ?? DEFAULT_APPEARANCE;
   const progress = snapshot.settings.progress ?? INITIAL_SNAPSHOT.settings.progress!;
+  const unlockedRewards = new Set(progress.unlockedRewards);
 
   const clearLocalContextPreview = useCallback(() => {
     setContextPreview(null);
@@ -1127,10 +1130,15 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                   <div className="tone-cards-grid">
                     {CAT_APPEARANCES.map((fur) => {
                       const isSelected = appearance.fur === fur;
+                      const rewardId = `fur-${fur}`;
+                      const requiredLevel = requiredLevelForReward(rewardId);
+                      const isUnlocked = unlockedRewards.has(rewardId);
                       return (
                         <button
                           key={fur}
                           className={`tone-card ${isSelected ? "tone-card--selected" : ""}`}
+                          disabled={!isUnlocked}
+                          aria-label={isUnlocked ? `${fur} fur` : `${fur} fur unlocks at level ${requiredLevel}`}
                           onClick={() => {
                             if (sound.playClick) sound.playClick();
                             void updateSettings({ appearance: { ...appearance, fur } });
@@ -1138,6 +1146,7 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                         >
                           <div className="tone-card__text">
                             <strong>{fur.charAt(0).toUpperCase() + fur.slice(1)}</strong>
+                            {!isUnlocked && <small>Level {requiredLevel}</small>}
                           </div>
                         </button>
                       );
@@ -1149,10 +1158,15 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                   <div className="tone-cards-grid">
                     {(["calm", "energetic", "chaotic", "sleepy"] as const).map((personality) => {
                       const isSelected = appearance.animationPersonality === personality;
+                      const rewardId = `animation-${personality}`;
+                      const requiredLevel = requiredLevelForReward(rewardId);
+                      const isUnlocked = unlockedRewards.has(rewardId);
                       return (
                         <button
                           key={personality}
                           className={`tone-card ${isSelected ? "tone-card--selected" : ""}`}
+                          disabled={!isUnlocked}
+                          aria-label={isUnlocked ? `${personality} animation` : `${personality} animation unlocks at level ${requiredLevel}`}
                           onClick={() => {
                             if (sound.playClick) sound.playClick();
                             void updateSettings({ appearance: { ...appearance, animationPersonality: personality } });
@@ -1160,6 +1174,7 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                         >
                           <div className="tone-card__text">
                             <strong>{personality.charAt(0).toUpperCase() + personality.slice(1)}</strong>
+                            {!isUnlocked && <small>Level {requiredLevel}</small>}
                           </div>
                         </button>
                       );
@@ -1198,10 +1213,15 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                     {["plant", "rug", "lamp"].map((id, index) => {
                       const items = snapshot.settings.room?.items ?? [];
                       const hasItem = items.some((item) => item.id === id);
+                      const rewardId = `room-${id}`;
+                      const requiredLevel = requiredLevelForReward(rewardId);
+                      const isUnlocked = unlockedRewards.has(rewardId);
                       return (
                         <button
                           key={id}
                           className={`tone-card ${hasItem ? "tone-card--selected" : ""}`}
+                          disabled={!isUnlocked}
+                          aria-label={isUnlocked ? `${id} furniture` : `${id} furniture unlocks at level ${requiredLevel}`}
                           onClick={() => {
                             const newItems = hasItem
                               ? items.filter((item) => item.id !== id)
@@ -1214,7 +1234,7 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                             });
                           }}
                         >
-                          <div className="tone-card__text"><strong>{id}</strong></div>
+                          <div className="tone-card__text"><strong>{id}</strong>{!isUnlocked && <small>Level {requiredLevel}</small>}</div>
                         </button>
                       );
                     })}

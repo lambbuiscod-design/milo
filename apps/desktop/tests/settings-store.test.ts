@@ -47,8 +47,8 @@ describe("content-free persisted settings schema", () => {
 });
 
 describe("ContentFreeSettingsStore catAppearance persistence", () => {
-  it("defaults to charcoal and persists catAppearance roundtrip", async () => {
-    const { mkdtempSync, rmSync } = await import("node:fs");
+  it("defaults to charcoal and preserves a legacy selected appearance", async () => {
+    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const path = await import("node:path");
     const { ContentFreeSettingsStore } = await import("../src/main/settings-store");
@@ -57,20 +57,16 @@ describe("ContentFreeSettingsStore catAppearance persistence", () => {
     try {
       const store1 = new ContentFreeSettingsStore(tempDir);
       expect(store1.getPublicSettings().catAppearance).toBe("charcoal");
+      expect(() => store1.updatePublicSettings({ catAppearance: "slate" })).toThrow("MILO_REWARD_LOCKED");
 
-      const updated = store1.updatePublicSettings({ catAppearance: "slate" });
-      expect(updated.catAppearance).toBe("slate");
-      expect(store1.getPublicSettings().catAppearance).toBe("slate");
-
-      // Verify re-opening store from disk retains persisted appearance
+      writeFileSync(
+        path.join(tempDir, "milo-settings.json"),
+        JSON.stringify({ ...VALID_SETTINGS, catAppearance: "slate" }),
+      );
       const store2 = new ContentFreeSettingsStore(tempDir);
       expect(store2.getPublicSettings().catAppearance).toBe("slate");
-
-      // Verify updating to mauve
-      const updatedMauve = store2.updatePublicSettings({ catAppearance: "mauve" });
-      expect(updatedMauve.catAppearance).toBe("mauve");
-      const store3 = new ContentFreeSettingsStore(tempDir);
-      expect(store3.getPublicSettings().catAppearance).toBe("mauve");
+      expect(store2.getPublicSettings().appearance?.fur).toBe("slate");
+      expect(store2.getPublicSettings().progress?.unlockedRewards).toContain("fur-slate");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -123,6 +119,26 @@ describe("ContentFreeSettingsStore progression migration and limits", () => {
       store = new ContentFreeSettingsStore(tempDir, { now });
       expect(store.addXp(5)).toBe(true);
       expect(store.getPublicSettings().progress?.currentStreak).toBe(2);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("enforces reward ownership in the main-process store", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const { ContentFreeSettingsStore } = await import("../src/main/settings-store");
+    const tempDir = mkdtempSync(path.join(tmpdir(), "milo-settings-rewards-"));
+    try {
+      const store = new ContentFreeSettingsStore(tempDir);
+      expect(() => store.updatePublicSettings({ catAppearance: "slate" })).toThrow("MILO_REWARD_LOCKED");
+      expect(() => store.updatePublicSettings({
+        room: { background: "default", items: [{ id: "lamp", x: 20, y: 20, scale: 1 }] },
+      })).toThrow("MILO_REWARD_LOCKED");
+      expect(store.updatePublicSettings({
+        room: { background: "default", items: [{ id: "plant", x: 20, y: 20, scale: 1 }] },
+      }).room?.items[0]?.id).toBe("plant");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
