@@ -141,6 +141,7 @@ function createMockSettingsStore(initialTone: ToneProfile = "standard"): Content
         dockMode: "follow-window" as const,
       };
     },
+    addXp: vi.fn(),
     getOverlayPosition: () => null,
     setOverlayPosition: () => {},
   } as unknown as ContentFreeSettingsStore;

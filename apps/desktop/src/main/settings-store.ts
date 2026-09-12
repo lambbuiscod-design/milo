@@ -25,11 +25,52 @@ const positionSchema = z
 const positionsSchema = z
   .record(z.string().regex(/^-?\d{1,20}$/), positionSchema)
   .refine((positions) => Object.keys(positions).length <= 16);
+const cosmeticIdSchema = z.string().min(1).max(48).regex(/^[a-z0-9_-]+$/);
+const appearanceSchema = z
+  .object({
+    fur: z.enum(["charcoal", "slate", "mauve", "caramel"]).default("charcoal"),
+    eyes: cosmeticIdSchema.default("classic"),
+    clothing: cosmeticIdSchema.optional(),
+    accessories: z
+      .object({
+        head: cosmeticIdSchema.optional(),
+        face: cosmeticIdSchema.optional(),
+        neck: cosmeticIdSchema.optional(),
+        body: cosmeticIdSchema.optional(),
+      })
+      .strict()
+      .default({}),
+    animationPersonality: z.enum(["calm", "energetic", "chaotic", "sleepy"]).default("calm"),
+  })
+  .strict();
+const progressSchema = z
+  .object({
+    xp: z.number().int().min(0).max(1_000_000).default(0),
+    level: z.number().int().min(1).max(100).default(1),
+    firstMetAt: z.string().datetime().default(() => new Date().toISOString()),
+    currentStreak: z.number().int().min(0).max(10_000).default(0),
+  })
+  .strict();
+const roomItemSchema = z
+  .object({
+    id: cosmeticIdSchema,
+    x: z.number().finite().min(0).max(1_000),
+    y: z.number().finite().min(0).max(1_000),
+    scale: z.number().finite().min(0.5).max(2),
+    rotation: z.number().finite().min(-180).max(180).optional(),
+  })
+  .strict();
+const roomSchema = z
+  .object({
+    background: cosmeticIdSchema.default("default"),
+    items: z.array(roomItemSchema).max(32).default([]),
+  })
+  .strict();
 const persistedSettingsSchema = z
   .object({
     version: z.literal(1),
     theme: z.enum(["system", "light", "dark"]),
-    motion: z.enum(["system", "full", "reduced"]),
+    motion: z.enum(["system", "full", "reduced", "minimal"]),
     showWatchingIndicator: z.boolean(),
     soundEnabled: z.boolean().default(true),
     soundVolume: z.number().min(0).max(1).default(0.7),
@@ -37,8 +78,25 @@ const persistedSettingsSchema = z
     activeTone: z.enum(["standard", "romantic", "witty", "professional"]).default("standard"),
     opacity: z.number().min(0.75).max(1).default(1.0),
     isPinned: z.boolean().default(true),
-    dockMode: z.enum(["free", "top-left", "top-right", "bottom-left", "bottom-right", "follow-window"]).default("follow-window"),
+    dockMode: z.enum(["free", "top-left", "top-right", "bottom-left", "bottom-right", "follow-window"]).default("free"),
+    launchAtLogin: z.boolean().default(false),
+    startMinimized: z.boolean().default(true),
+    closeBehavior: z.enum(["hide", "minimize", "quit"]).default("hide"),
+    language: z.enum(["system", "en", "it"]).default("system"),
     catAppearance: z.enum(["charcoal", "slate", "mauve", "caramel"]).default("charcoal"),
+    appearance: appearanceSchema.default({
+      fur: "charcoal",
+      eyes: "classic",
+      accessories: {},
+      animationPersonality: "calm",
+    }),
+    progress: progressSchema.default({
+      xp: 0,
+      level: 1,
+      firstMetAt: new Date().toISOString(),
+      currentStreak: 0,
+    }),
+    room: roomSchema.default({ background: "default", items: [] }),
     paused: z.boolean(),
     overlayPositions: positionsSchema,
   })
@@ -57,8 +115,15 @@ const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
   activeTone: "standard",
   opacity: 1.0,
   isPinned: true,
-  dockMode: "follow-window",
+  dockMode: "free",
+  launchAtLogin: false,
+  startMinimized: true,
+  closeBehavior: "hide",
+  language: "system",
   catAppearance: "charcoal",
+  appearance: { fur: "charcoal" as const, eyes: "classic", accessories: {}, animationPersonality: "calm" as const },
+  progress: { xp: 0, level: 1, firstMetAt: new Date().toISOString(), currentStreak: 0 },
+  room: { background: "default", items: [] },
   paused: false,
   overlayPositions: Object.freeze({}),
 });
@@ -86,12 +151,26 @@ export class ContentFreeSettingsStore {
       opacity: this.#settings.opacity,
       isPinned: this.#settings.isPinned,
       dockMode: this.#settings.dockMode,
+      launchAtLogin: this.#settings.launchAtLogin,
+      startMinimized: this.#settings.startMinimized,
+      closeBehavior: this.#settings.closeBehavior,
+      language: this.#settings.language,
       catAppearance: this.#settings.catAppearance,
+      appearance: this.#settings.appearance,
+      progress: this.#settings.progress,
+      room: this.#settings.room,
     };
   }
 
   updatePublicSettings(patch: PublicSettingsPatch): PublicSettings {
-    this.#settings = persistedSettingsSchema.parse({ ...this.#settings, ...patch });
+    const appearance = patch.appearance ?? this.#settings.appearance;
+    const catAppearance = patch.catAppearance ?? appearance.fur;
+    this.#settings = persistedSettingsSchema.parse({
+      ...this.#settings,
+      ...patch,
+      catAppearance,
+      appearance: { ...appearance, fur: catAppearance },
+    });
     this.#write();
     return this.getPublicSettings();
   }
@@ -107,6 +186,56 @@ export class ContentFreeSettingsStore {
 
   getOverlayPosition(displayId: string): Point | null {
     return this.#settings.overlayPositions[displayId] ?? null;
+  }
+
+  #lastXpTime = 0;
+  #dailyXp = 0;
+  #xpDay = "";
+
+  addXp(amount: number): void {
+    if (!Number.isInteger(amount) || amount < 1 || amount > 20) return;
+    const now = Date.now();
+    const today = new Date().toDateString();
+
+    if (this.#xpDay !== today) {
+      this.#xpDay = today;
+      this.#dailyXp = 0;
+    }
+
+    // Rate limit: max 1 per 2 seconds, max 20 per day
+    if (now - this.#lastXpTime < 2000) return;
+    if (this.#dailyXp >= 20) return;
+
+    this.#lastXpTime = now;
+    this.#dailyXp += amount;
+
+    const current = this.#settings.progress;
+    let newXp = current.xp + amount;
+    let newLevel = current.level;
+
+    while (true) {
+      let threshold = 100;
+      if (newLevel === 2) threshold = 250;
+      else if (newLevel === 3) threshold = 500;
+      else if (newLevel >= 4) threshold = 1000 * (newLevel - 3);
+
+      if (newXp >= threshold) {
+        newXp -= threshold;
+        newLevel++;
+      } else {
+        break;
+      }
+    }
+
+    this.#settings = persistedSettingsSchema.parse({
+      ...this.#settings,
+      progress: {
+        ...current,
+        xp: newXp,
+        level: newLevel
+      }
+    });
+    this.#write();
   }
 
   setOverlayPosition(displayId: string, position: Point): void {

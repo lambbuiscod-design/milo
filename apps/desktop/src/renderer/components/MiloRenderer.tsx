@@ -240,15 +240,10 @@ export const STATE_METADATA: Readonly<Record<CharacterState, StateMeta>> = Objec
  * Hook to subscribe to the Character Engine state via DesktopSnapshot.
  */
 export function useMiloCharacterState(overrideSnapshot?: DesktopSnapshot): CharacterStateSnapshot | null {
-  const [characterState, setCharacterState] = useState<CharacterStateSnapshot | null>(
-    overrideSnapshot?.character ?? null,
-  );
+  const [characterState, setCharacterState] = useState<CharacterStateSnapshot | null>(null);
 
   useEffect(() => {
-    if (overrideSnapshot) {
-      setCharacterState(overrideSnapshot.character ?? null);
-      return;
-    }
+    if (overrideSnapshot) return;
     if (typeof window === "undefined" || !("milo" in window)) return;
     const milo = window.milo;
     if (!milo) return;
@@ -275,7 +270,7 @@ export function useMiloCharacterState(overrideSnapshot?: DesktopSnapshot): Chara
     };
   }, [overrideSnapshot]);
 
-  return characterState;
+  return overrideSnapshot?.character ?? characterState;
 }
 
 /**

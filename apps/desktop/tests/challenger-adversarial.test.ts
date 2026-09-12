@@ -133,6 +133,7 @@ function createMockSettingsStore(initialPaused = false) {
       dockMode: "follow-window" as const,
     }),
     updatePublicSettings: vi.fn((patch: unknown) => patch),
+    addXp: vi.fn(),
     getOverlayPosition: () => savedPos,
     setOverlayPosition: (_id: string, pos: Point) => {
       savedPos = pos;

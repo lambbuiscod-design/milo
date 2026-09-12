@@ -138,6 +138,7 @@ function createMockSettingsStore() {
       dockMode: "follow-window" as const,
     }),
     updatePublicSettings: vi.fn((patch: unknown) => patch),
+    addXp: vi.fn(),
     getOverlayPosition: () => null,
     setOverlayPosition: vi.fn(),
   };
@@ -318,8 +319,8 @@ describe("PopoutBubbles Component & View States", () => {
     expect(html).toContain("Milo desktop companion");
 
     // Large settings panel is NOT present in collapsed mode
-    expect(html).not.toContain('id="panel-title"');
-    expect(html).not.toContain("Private companion");
+    expect(html).not.toContain('class="home-layout"');
+    expect(html).not.toContain("Welcome back!");
 
     // Pop-out bubbles are NOT present when no replies exist
     expect(html).not.toContain("popout-bubbles");
@@ -353,10 +354,10 @@ describe("PopoutBubbles Component & View States", () => {
     );
 
     // Large settings panel is present when panelOpen is true
-    expect(html).toContain('id="panel-title"');
-    expect(html).toContain("Private companion");
-    expect(html).toContain("panel__header");
-    expect(html).toContain("desktop-layout");
+    expect(html).toContain('class="home-layout"');
+    expect(html).toContain("Welcome back!");
+    expect(html).toContain("home-actions");
+    expect(html).toContain("Milo Room");
   });
 });
 

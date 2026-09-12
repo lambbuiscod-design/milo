@@ -1,9 +1,11 @@
-import type { CharacterState, DesktopState } from "../shared/contracts";
+import { useState, useEffect } from "react";
+import type { CharacterState, DesktopState, MiloAppearance } from "../shared/contracts";
 
 type MiloCatProps = Readonly<{
   state: DesktopState | CharacterState;
   "aria-label"?: string;
   pupilOffset?: { x: number; y: number };
+  appearance?: MiloAppearance;
 }>;
 
 const STATE_LABELS: Record<string, string> = {
@@ -30,22 +32,56 @@ const STATE_LABELS: Record<string, string> = {
   offline: "Milo is offline",
 };
 
-export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset }: MiloCatProps) {
+export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset: externalPupilOffset, appearance }: MiloCatProps) {
+  const [localPupil, setLocalPupil] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      // Very simple normalized tracking
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      const dx = (e.clientX - cx) / cx;
+      const dy = (e.clientY - cy) / cy;
+      setLocalPupil({ x: dx * 3, y: dy * 3 }); // max 3px movement
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  const pupilOffset = externalPupilOffset || localPupil;
+  const displayState = state;
+
+
+  const furColors = {
+    charcoal: { cat: "#2b3044", ear: "#d97757", nose: "#c86d51" },
+    slate: { cat: "#4a5568", ear: "#7b8fab", nose: "#6b7fa0" },
+    mauve: { cat: "#7c6b7e", ear: "#b8939b", nose: "#a8838b" },
+    caramel: { cat: "#8b6a3e", ear: "#c49a6c", nose: "#b58a5c" }
+  };
+
+  const furKey = appearance?.fur as keyof typeof furColors;
+  const fur = furKey && furColors[furKey] ? furColors[furKey] : furColors.charcoal;
+  const styleVars = {
+    "--cat": fur.cat,
+    "--cat-ear": fur.ear,
+    "--cat-nose": fur.nose,
+  } as React.CSSProperties;
   const isWide =
-    state === "noticed" ||
-    state === "alert" ||
-    state === "curious" ||
-    state === "playful" ||
-    state === "looking" ||
-    state === "dragging";
-  const eyes = state === "paused" || state === "sleeping" ? "paused" : isWide ? "wide" : "normal";
+    displayState === "noticed" ||
+    displayState === "alert" ||
+    displayState === "curious" ||
+    displayState === "playful" ||
+    displayState === "looking" ||
+    displayState === "dragging";
+  const eyes = displayState === "paused" || displayState === "sleeping" ? "paused" : isWide ? "wide" : "normal";
 
   return (
     <svg
-      className={`milo-cat milo-cat--${state}`}
+      className={`milo-cat milo-cat--${displayState}`}
       viewBox="0 0 128 128"
       role="img"
       aria-label={customAriaLabel ?? "Milo cat mascot"}
+      style={styleVars}
     >
       <title>{STATE_LABELS[state]}</title>
 
@@ -127,9 +163,9 @@ export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset }: M
       <path
         className="milo-cat__mouth"
         d={
-          state === "error"
+          displayState === "error"
             ? "M64 68.6v2m-6 3.5c2-2 4.5-2 6-.5m0 .5c1.5-1.5 4-1.5 6 .5"
-            : state === "ready"
+            : displayState === "ready"
             ? "M64 68.6v2m-8 2c2.5 3.5 5.5 3.5 8 .5m0 0c2.5 3 5.5 3 8-.5"
             : "M64 68.6v2m-7 2c2 2.2 4.5 2.2 7 .5m0 0c2.5 1.7 5 1.7 7-.5"
         }
@@ -146,7 +182,7 @@ export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset }: M
       </g>
 
       {/* Generating state: 3 subtle pulsing animated thinking dots cleanly inside viewBox 0 0 128 128 */}
-      {state === "generating" && (
+      {displayState === "generating" && (
         <g className="milo-cat__thinking" fill="var(--cat-badge, var(--brand, #2b3044))">
           <circle cx="96" cy="26" r="3" opacity="0.4">
             <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" begin="0s" />
@@ -164,19 +200,19 @@ export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset }: M
       )}
 
       {/* State Badges: ready, error, paused */}
-      {state === "ready" && (
+      {displayState === "ready" && (
         <g className="milo-cat__badge" aria-hidden="true">
           <circle cx="106" cy="24" r="14" fill="var(--state-ready)" />
           <path d="m99 24 5 5 9-11" fill="none" stroke="var(--state-on-ready)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
         </g>
       )}
-      {state === "error" && (
+      {displayState === "error" && (
         <g className="milo-cat__badge" aria-hidden="true">
           <path d="m106 10 15 26H91Z" fill="var(--state-error)" stroke="var(--surface)" strokeLinejoin="round" strokeWidth="3" />
           <path d="M106 19v8m0 4v1" stroke="var(--state-on-error)" strokeLinecap="round" strokeWidth="3" />
         </g>
       )}
-      {state === "paused" && (
+      {displayState === "paused" && (
         <g className="milo-cat__badge" aria-hidden="true">
           <circle cx="106" cy="24" r="14" fill="var(--state-paused)" />
           <path d="M102 18v12m8-12v12" stroke="var(--state-on-paused)" strokeLinecap="round" strokeWidth="4" />

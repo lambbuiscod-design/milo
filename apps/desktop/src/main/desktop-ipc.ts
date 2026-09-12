@@ -17,13 +17,13 @@ import {
   type ContextPreview,
   type ContextPreviewInput,
   type AccountDestination,
+  type AppView,
   type DesktopSnapshot,
   type DesktopState,
   type IpcResult,
   type PublicSettings,
   type SyntheticSuggestion,
   type SuggestionResponse,
-  type TriggerCharacterActionInput,
   type WindowCandidate,
   type WindowSelectionResult,
   type WatchingState,
@@ -65,6 +65,7 @@ import { WindowCaptureService } from "./window-capturer";
 import { DesktopOcrEngine, type DesktopOcrEngineApi } from "./ocr-engine";
 import { EventBus, MiloStateMachine, AnimationManager, STATE_PRIORITIES } from "./milo-core";
 import { clampWithEdgePeeking, MIN_COMPANION_PEEK_PX } from "../shared/companion-bounds";
+import { resolveCompanionDockPosition } from "../shared/companion-docking";
 
 class UnavailableError extends Error {
   constructor() {
@@ -94,47 +95,31 @@ export function createCompanionContextMenuTemplate(options: {
   companionWindow?: BrowserWindow | null;
   overlay: OverlayController;
   publish?: () => void;
+  navigate?: (view: AppView) => void;
 }): MenuItemConstructorOptions[] {
+  const openView = (view: AppView): void => {
+    options.overlay.setPanelOpen(true);
+    options.navigate?.(view);
+    if (!options.window.isDestroyed()) options.window.showInactive();
+    options.publish?.();
+  };
+
   return [
     {
       label: "Open Milo",
-      click: () => {
-        options.overlay.setPanelOpen(true);
-        if (!options.window.isDestroyed()) {
-          options.window.showInactive();
-        }
-        options.publish?.();
-      },
+      click: () => openView("home"),
     },
     {
       label: "Milo Room",
-      click: () => {
-        options.overlay.setPanelOpen(true);
-        if (!options.window.isDestroyed()) {
-          options.window.showInactive();
-        }
-        options.publish?.();
-      },
+      click: () => openView("room"),
     },
     {
       label: "Customize",
-      click: () => {
-        options.overlay.setPanelOpen(true);
-        if (!options.window.isDestroyed()) {
-          options.window.showInactive();
-        }
-        options.publish?.();
-      },
+      click: () => openView("customize"),
     },
     {
       label: "Settings",
-      click: () => {
-        options.overlay.setPanelOpen(true);
-        if (!options.window.isDestroyed()) {
-          options.window.showInactive();
-        }
-        options.publish?.();
-      },
+      click: () => openView("settings"),
     },
     {
       label: "Hide Milo",
@@ -142,6 +127,7 @@ export function createCompanionContextMenuTemplate(options: {
         if (options.companionWindow && !options.companionWindow.isDestroyed()) {
           options.companionWindow.hide();
         }
+        if (!options.window.isDestroyed() && typeof options.window.hide === "function") options.window.hide();
       },
     },
   ];
@@ -232,6 +218,16 @@ export function registerDesktopIpc({
     }
     return value;
   };
+  const showOverlaySurface = (): void => {
+    if (!window.isDestroyed() && typeof window.showInactive === "function") window.showInactive();
+  };
+  const hideOverlaySurface = (): void => {
+    if (!window.isDestroyed() && typeof window.hide === "function") window.hide();
+  };
+  const panelIsOpen = (): boolean =>
+    typeof overlay.isPanelOpen === "function" ? overlay.isPanelOpen() : overlay.panelOpen;
+  const bubblesAreOpen = (): boolean =>
+    typeof overlay.isBubblesOpen === "function" ? overlay.isBubblesOpen() : overlay.bubblesOpen;
 
   const setPaused = (paused: boolean): WatchingState => {
     generationEpoch += 1;
@@ -246,6 +242,7 @@ export function registerDesktopIpc({
       if (typeof overlay.setBubblesOpen === "function") {
         overlay.setBubblesOpen(false);
       }
+      if (!panelIsOpen()) hideOverlaySurface();
     } else {
       characterStateMachine.transition("RESUME_TOGGLE");
     }
@@ -346,8 +343,9 @@ export function registerDesktopIpc({
     if (epoch === generationEpoch && state !== "paused") {
       state = transitionDesktopState(state, "ready");
       replies = [...SYNTHETIC_SUGGESTIONS];
-      if (typeof overlay.setBubblesOpen === "function" && !overlay.isPanelOpen()) {
+      if (typeof overlay.setBubblesOpen === "function" && !panelIsOpen()) {
         overlay.setBubblesOpen(true);
+        showOverlaySurface();
       }
       publish();
     }
@@ -442,8 +440,9 @@ export function registerDesktopIpc({
 
       replies = generatedReplies;
       state = transitionDesktopState(state, "ready");
-      if (typeof overlay.setBubblesOpen === "function" && !overlay.isPanelOpen()) {
+      if (typeof overlay.setBubblesOpen === "function" && !panelIsOpen()) {
         overlay.setBubblesOpen(true);
+        showOverlaySurface();
       }
       publish();
       return { mode: "live", warning: generated.warning, replies };
@@ -453,6 +452,7 @@ export function registerDesktopIpc({
         if (typeof overlay.setBubblesOpen === "function") {
           overlay.setBubblesOpen(false);
         }
+        if (!panelIsOpen()) hideOverlaySurface();
         state = transitionDesktopState(state, "fail");
         publish();
       }
@@ -509,6 +509,9 @@ export function registerDesktopIpc({
       companionWindow: targetWindow,
       overlay,
       publish,
+      navigate: (view) => {
+        if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.navigate, view);
+      },
     });
     Menu.buildFromTemplate(template).popup({ window: targetWindow });
   };
@@ -632,10 +635,12 @@ export function registerDesktopIpc({
     const reply = replies.find((candidate) => candidate.id === input.suggestionId);
     if (!reply) throw new UnavailableError();
     clipboard.writeText(reply.text, "clipboard");
+    settingsStore.addXp(5);
     lastAction = "copied";
     if (typeof overlay.setBubblesOpen === "function") {
       overlay.setBubblesOpen(false);
     }
+    if (!panelIsOpen()) hideOverlaySurface();
     publish();
   });
   handle(IPC_CHANNELS.getSettings, (payload): PublicSettings => {
@@ -644,11 +649,28 @@ export function registerDesktopIpc({
   });
   handle(IPC_CHANNELS.updateSettings, (payload) => {
     const patch = parseSettingsPatch(payload);
-    if (patch.opacity !== undefined && !window.isDestroyed()) {
-      window.setOpacity(Math.max(0.75, Math.min(1.0, patch.opacity)));
+    if (patch.launchAtLogin !== undefined) {
+      try {
+        app.setLoginItemSettings({ openAtLogin: patch.launchAtLogin });
+      } catch {
+        throw new UnavailableError();
+      }
     }
-    if (patch.isPinned !== undefined && !window.isDestroyed()) {
-      window.setAlwaysOnTop(patch.isPinned);
+    if (patch.opacity !== undefined) {
+      const opacity = Math.max(0.75, Math.min(1.0, patch.opacity));
+      if (!window.isDestroyed()) window.setOpacity(opacity);
+      if (companionWindow && !companionWindow.isDestroyed()) companionWindow.setOpacity(opacity);
+    }
+    if (patch.isPinned !== undefined) {
+      if (!window.isDestroyed()) window.setAlwaysOnTop(patch.isPinned);
+      if (companionWindow && !companionWindow.isDestroyed()) companionWindow.setAlwaysOnTop(patch.isPinned);
+    }
+    if (patch.dockMode !== undefined && companionWindow && !companionWindow.isDestroyed()) {
+      const bounds = companionWindow.getBounds();
+      const center = { x: bounds.x + Math.round(bounds.width / 2), y: bounds.y + Math.round(bounds.height / 2) };
+      const display = screen.getDisplayNearestPoint(center);
+      const position = resolveCompanionDockPosition(patch.dockMode, display.workArea, bounds);
+      if (position) companionWindow.setPosition(position.x, position.y, false);
     }
     const updated = settingsStore.updatePublicSettings(patch);
     publish();
@@ -680,6 +702,7 @@ export function registerDesktopIpc({
     if (typeof overlay.setBubblesOpen === "function") {
       overlay.setBubblesOpen(false);
     }
+    if (!panelIsOpen()) hideOverlaySurface();
     nativeHelper.suspend();
     selectedWindow = null;
     clearContextPreview();
@@ -700,6 +723,8 @@ export function registerDesktopIpc({
       }
     }
     overlay.setPanelOpen(open);
+    if (open) showOverlaySurface();
+    else if (!bubblesAreOpen()) hideOverlaySurface();
     return publish();
   });
   handle(IPC_CHANNELS.previewState, async (payload) => {

@@ -35,7 +35,7 @@ export function resolveDatabasePath(): string {
     return customDbPath;
   }
   try {
-    if (typeof app !== "undefined" && app !== null && typeof (app as any)?.getPath === "function") {
+    if (typeof app !== "undefined" && app !== null && typeof app.getPath === "function") {
       return path.join(app.getPath("userData"), "milo.db");
     }
   } catch {

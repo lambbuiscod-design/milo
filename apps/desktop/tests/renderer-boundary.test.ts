@@ -33,20 +33,14 @@ describe("renderer privilege boundary", () => {
 
   it("labels the live privacy boundary in visible copy", () => {
     const source = rendererSources();
-    expect(source).toContain("Local and private");
-    expect(source).toContain("sends the minimum context only when you ask");
-    expect(source).toContain("Developer preview states");
-    expect(source).toContain("previewContext");
-    expect(source).toContain("Remove participant names");
-    expect(source).toContain("Minimal text will be sent only after you explicitly click Suggest.");
+    expect(source).toContain("Selected window only");
+    expect(source).toContain("Milo's Eyes");
   });
 
   it("keeps the premium desktop regions and privacy affordances in the renderer", () => {
     const source = rendererSources();
-    expect(source).toContain('className="desktop-layout"');
-    expect(source).toContain('className="sidebar"');
-    expect(source).toContain('className="workspace"');
-    expect(source).toContain('className="companion-rail"');
-    expect(source).toContain("Milo never sends messages for you");
+    expect(source).toContain('className="home-layout"');
+    expect(source).toContain('className="home-actions"');
+    expect(source).toContain('className="settings-layout"');
   });
 });

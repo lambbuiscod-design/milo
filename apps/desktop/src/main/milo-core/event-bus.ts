@@ -51,10 +51,10 @@ export interface MiloEventMap {
   "system:reset": { timestamp: number };
 }
 
-export type EventHandler<T = any> = (payload: T) => void;
+export type EventHandler<T = unknown> = (payload: T) => void;
 
-export class EventBus<Events extends Record<string, any> = MiloEventMap> {
-  readonly #listeners = new Map<keyof Events, Set<EventHandler>>();
+export class EventBus<Events extends object = MiloEventMap> {
+  readonly #listeners = new Map<keyof Events, Set<EventHandler<unknown>>>();
   readonly #onError?: (error: unknown, event: keyof Events) => void;
 
   constructor(options?: { onError?: (error: unknown, event: keyof Events) => void }) {
@@ -70,7 +70,7 @@ export class EventBus<Events extends Record<string, any> = MiloEventMap> {
       set = new Set();
       this.#listeners.set(event, set);
     }
-    set.add(handler as EventHandler);
+    set.add(handler as unknown as EventHandler<unknown>);
 
     return () => this.unsubscribe(event, handler);
   }
@@ -81,7 +81,7 @@ export class EventBus<Events extends Record<string, any> = MiloEventMap> {
   unsubscribe<E extends keyof Events>(event: E, handler: EventHandler<Events[E]>): void {
     const set = this.#listeners.get(event);
     if (!set) return;
-    set.delete(handler as EventHandler);
+    set.delete(handler as unknown as EventHandler<unknown>);
     if (set.size === 0) {
       this.#listeners.delete(event);
     }

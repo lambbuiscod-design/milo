@@ -7,6 +7,7 @@ import {
 } from "../shared/contracts";
 import {
   parseAccountDestination,
+  parseAppView,
   parseAuthSummary,
   parseAskMiloInput,
   parseBoolean,
@@ -95,6 +96,18 @@ const api: MiloDesktopApi = Object.freeze({
     };
     ipcRenderer.on(IPC_CHANNELS.stateChanged, wrapped);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.stateChanged, wrapped);
+  },
+  onNavigate: (listener) => {
+    if (typeof listener !== "function") throw new Error("INVALID_LISTENER");
+    const wrapped = (_event: Electron.IpcRendererEvent, value: unknown): void => {
+      try {
+        listener(parseAppView(value));
+      } catch {
+        // Ignore malformed events from outside the reviewed main-process path.
+      }
+    };
+    ipcRenderer.on(IPC_CHANNELS.navigate, wrapped);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.navigate, wrapped);
   },
   triggerCharacterAction: (input) =>
     invoke(

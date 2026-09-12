@@ -12,6 +12,7 @@ export const expectedPreloadMethods = Object.freeze([
   "getSettings",
   "getSnapshot",
   "nudgePosition",
+  "onNavigate",
   "onStateChanged",
   "openAccount",
   "openContextMenu",

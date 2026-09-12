@@ -4,6 +4,7 @@ import {
   Menu,
   app,
   protocol,
+  screen,
   session,
   type BrowserWindow,
 } from "electron";
@@ -23,6 +24,7 @@ import { createNodeLoopbackCallbackServer } from "./loopback-callback-server";
 import { DesktopSuggestionClient } from "./desktop-suggestion-client";
 import { createAccountBrowserOpener } from "./electron-account-browser";
 import { CompanionPositionManager } from "./companion-position-manager";
+import { resolveCompanionDockPosition } from "../shared/companion-docking";
 import {
   createCompanionWindow,
   createOverlayWindow,
@@ -58,6 +60,7 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 let overlayWindow: BrowserWindow | null = null;
 let companionWindow: BrowserWindow | null = null;
 let companionPositionManager: CompanionPositionManager | null = null;
+let isQuitting = false;
 
 if (!hasSingleInstanceLock) {
   app.quit();
@@ -91,6 +94,7 @@ if (!hasSingleInstanceLock) {
       registerRendererProtocol(rendererSession, rendererRoot);
 
       const settingsStore = new ContentFreeSettingsStore(app.getPath("userData"));
+      const startupSettings = settingsStore.getPublicSettings();
       const publicClientId = __MILO_DESKTOP_CLIENT_ID__;
       const supabaseOrigin = __MILO_SUPABASE_ORIGIN__;
       const apiBaseUrl = __MILO_API_BASE_URL__;
@@ -135,6 +139,7 @@ if (!hasSingleInstanceLock) {
       overlayWindow = window;
       const overlay = new OverlayController(window, settingsStore);
       overlay.initialize();
+      if (!(startupSettings.startMinimized ?? true)) overlay.setPanelOpen(true);
 
       const companion = createCompanionWindow(preloadPath);
       companionWindow = companion;
@@ -144,6 +149,12 @@ if (!hasSingleInstanceLock) {
       companionPositionManager.attachWindow(companion);
       const companionPosition = companionPositionManager.loadInitialPosition();
       companion.setBounds({ ...companionPosition, width: 250, height: 300 }, false);
+      const startupDockPosition = resolveCompanionDockPosition(
+        startupSettings.dockMode ?? "free",
+        screen.getDisplayNearestPoint(companionPosition).workArea,
+        { width: 250, height: 300 },
+      );
+      if (startupDockPosition) companion.setPosition(startupDockPosition.x, startupDockPosition.y, false);
 
       const nativeHelper = new NativeHelperClient({
         pathContext: {
@@ -163,8 +174,23 @@ if (!hasSingleInstanceLock) {
         accountOpener,
       });
 
-      window.setAlwaysOnTop(true, "floating");
-      window.once("ready-to-show", () => window.showInactive());
+      window.setAlwaysOnTop(startupSettings.isPinned ?? true, "floating");
+      window.setOpacity(startupSettings.opacity ?? 1);
+      window.once("ready-to-show", () => {
+        if (!(startupSettings.startMinimized ?? true)) window.showInactive();
+      });
+      window.on("close", (event) => {
+        if (isQuitting) return;
+        const closeBehavior = settingsStore.getPublicSettings().closeBehavior ?? "hide";
+        if (closeBehavior === "quit") {
+          isQuitting = true;
+          app.quit();
+          return;
+        }
+        event.preventDefault();
+        if (closeBehavior === "minimize") window.minimize();
+        else window.hide();
+      });
       window.webContents.on("render-process-gone", () => app.quit());
       window.on("closed", () => {
         disposeIpc();
@@ -174,7 +200,8 @@ if (!hasSingleInstanceLock) {
         overlayWindow = null;
       });
 
-      companion.setAlwaysOnTop(true, "floating");
+      companion.setAlwaysOnTop(startupSettings.isPinned ?? true, "floating");
+      companion.setOpacity(startupSettings.opacity ?? 1);
       companion.once("ready-to-show", () => companion.showInactive());
       companion.webContents.on("render-process-gone", () => app.quit());
       companion.on("closed", () => {
@@ -191,6 +218,10 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on("window-all-closed", () => app.quit());
+
+app.on("before-quit", () => {
+  isQuitting = true;
+});
 
 app.on("will-quit", () => {
   companionPositionManager?.flush();

@@ -4,10 +4,13 @@ import {
   CONTEXT_PREVIEW_MESSAGE_LIMITS,
   TONE_PROFILE_METADATA,
   type CatAppearance,
+  type AppView,
   type ContextPreview,
   type ContextPreviewInput,
   type DesktopSnapshot,
   type DesktopState,
+  type DockMode,
+  type MiloAppearance,
   type MotionPreference,
   type PanelPlacement,
   type PositionDirection,
@@ -20,7 +23,6 @@ import {
 import { shouldReduceMotion } from "../shared/motion";
 import {
   AlertIcon,
-  ArrowIcon,
   CheckIcon,
   CloseIcon,
   CopyIcon,
@@ -29,16 +31,21 @@ import {
   MoreIcon,
   PauseIcon,
   PlayIcon,
-  ResetIcon,
-  SendIcon,
   SettingsIcon,
   ShieldIcon,
   SparkIcon,
-  VolumeIcon,
   WindowIcon,
 } from "./icons";
 import { MiloCat } from "./MiloCat";
 import { sound } from "./audio";
+import {
+  ProgressBar,
+  SegmentedControl,
+  Select,
+  SidebarItem,
+  Slider,
+  Toggle,
+} from "./components/primitives";
 
 export const CAT_APPEARANCE_PRESETS: Record<
   CatAppearance,
@@ -49,6 +56,20 @@ export const CAT_APPEARANCE_PRESETS: Record<
   mauve: { label: "Mauve", cat: "#7c6b7e", ear: "#b8939b", nose: "#a8838b", badge: "#b8939b" },
   caramel: { label: "Caramel", cat: "#8b6a3e", ear: "#c49a6c", nose: "#b58a5c", badge: "#c49a6c" },
 };
+
+const DEFAULT_APPEARANCE: MiloAppearance = {
+  fur: "charcoal",
+  eyes: "classic",
+  accessories: {},
+  animationPersonality: "calm",
+};
+
+function xpTargetForLevel(level: number): number {
+  if (level <= 1) return 100;
+  if (level === 2) return 250;
+  if (level === 3) return 500;
+  return 1_000 * (level - 3);
+}
 
 const INITIAL_SNAPSHOT: DesktopSnapshot = {
   state: "idle",
@@ -74,8 +95,20 @@ const INITIAL_SNAPSHOT: DesktopSnapshot = {
     activeTone: "standard",
     opacity: 1.0,
     isPinned: true,
-    dockMode: "follow-window",
+    dockMode: "free",
     catAppearance: "charcoal",
+    launchAtLogin: false,
+    startMinimized: true,
+    closeBehavior: "hide",
+    language: "system",
+    appearance: DEFAULT_APPEARANCE,
+    progress: {
+      xp: 0,
+      level: 1,
+      firstMetAt: "2026-01-01T00:00:00.000Z",
+      currentStreak: 0,
+    },
+    room: { background: "default", items: [] },
   },
   replies: [],
   lastAction: "none",
@@ -198,6 +231,8 @@ export function PopoutBubbles({
 }
 
 export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: DesktopSnapshot } = {}) {
+  const [appViewState, setAppViewState] = useState<AppView>("home");
+  const [settingsTab, setSettingsTab] = useState("general");
   const [snapshot, setSnapshot] = useState<DesktopSnapshot>(initialSnapshot);
   const [busy, setBusy] = useState(false);
   const [windowCandidates, setWindowCandidates] = useState<readonly WindowCandidate[]>([]);
@@ -220,6 +255,8 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
   const selectedWindowTitle = snapshot.watching.selectedWindow?.title;
   const isAuthenticated = snapshot.auth.status === "authenticated";
   const canSuggest = isAuthenticated && selectedWindowTitle !== undefined && snapshot.state !== "paused" && !busy && !authBusy;
+  const appearance = snapshot.settings.appearance ?? DEFAULT_APPEARANCE;
+  const progress = snapshot.settings.progress ?? INITIAL_SNAPSHOT.settings.progress!;
 
   const clearLocalContextPreview = useCallback(() => {
     setContextPreview(null);
@@ -247,6 +284,8 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
     };
   }, []);
 
+  useEffect(() => window.milo.onNavigate((view) => setAppViewState(view)), []);
+
   useEffect(() => {
     const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -258,6 +297,7 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
       document.documentElement.dataset.reducedMotion = String(
         shouldReduceMotion(snapshot.settings.motion, motionQuery.matches),
       );
+      document.documentElement.dataset.motion = snapshot.settings.motion;
     };
     applyPreferences();
     darkQuery.addEventListener("change", applyPreferences);
@@ -269,15 +309,15 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
   }, [snapshot.settings.motion, snapshot.settings.theme]);
 
   useEffect(() => {
-    const appearance = snapshot.settings.catAppearance ?? "charcoal";
-    const preset = CAT_APPEARANCE_PRESETS[appearance] ?? CAT_APPEARANCE_PRESETS.charcoal;
+    const appearanceKey = snapshot.settings.appearance?.fur ?? snapshot.settings.catAppearance ?? "charcoal";
+    const preset = CAT_APPEARANCE_PRESETS[appearanceKey] ?? CAT_APPEARANCE_PRESETS.charcoal;
     const rootStyle = document.documentElement.style;
     rootStyle.setProperty("--cat", preset.cat);
     rootStyle.setProperty("--cat-ear", preset.ear);
     rootStyle.setProperty("--cat-nose", preset.nose);
     rootStyle.setProperty("--cat-badge", preset.badge);
-    document.documentElement.dataset.catAppearance = appearance;
-  }, [snapshot.settings.catAppearance]);
+    document.documentElement.dataset.catAppearance = appearanceKey;
+  }, [snapshot.settings.appearance?.fur, snapshot.settings.catAppearance]);
 
   useEffect(() => {
     sound.setConfig(
@@ -614,523 +654,577 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
             </div>
           </header>
 
-          <div className="desktop-layout">
-            <aside className="sidebar" aria-label="Milo navigation">
-              <div className="sidebar__brand">
-                <div className="sidebar__avatar" aria-hidden="true">M</div>
-                <div><strong>Milo</strong><span>Private companion</span></div>
+          {appViewState === "home" ? (
+            <div className="home-layout">
+              <div className="home-header">
+                <h2>Milo</h2>
+                <button className="icon-button" type="button" aria-label="Settings" onClick={() => setAppViewState("settings")}>
+                  <SettingsIcon />
+                </button>
               </div>
-              <nav className="sidebar__nav" aria-label="Primary">
-                <a className="nav-item nav-item--active" href="#conversation-area">Conversations</a>
-                <a className="nav-item" href="#context-title">Insights</a>
-                <a className="nav-item" href="#settings-area">Settings</a>
-              </nav>
-              <div className="sidebar__privacy"><ShieldIcon /><span>Milo reads only what you allow on your device.</span></div>
-              <button className="sidebar__pause" type="button" onClick={() => void pauseWatching(snapshot.state !== "paused")}>
-                {snapshot.state === "paused" ? <PlayIcon /> : <PauseIcon />}
-                {snapshot.state === "paused" ? "Resume Milo" : "Pause Milo"}
-              </button>
-              <div className="sidebar__account" aria-label="Account">
-                <div className="account-avatar" aria-hidden="true">A</div>
-                <div><strong>{isAuthenticated ? "Signed in" : "Not signed in"}</strong><span>{isAuthenticated ? "Milo account" : "Sign in to suggest"}</span></div>
-                <div className="sidebar__account-actions">
-                  <button type="button" className="text-button" onClick={() => void safely(() => window.milo.openAccount("account"))}>Account</button>
-                  <button type="button" className="text-button" onClick={() => void safely(() => window.milo.openAccount("billing"))}>Billing</button>
-                  <button type="button" className="text-button" onClick={() => void safely(() => window.milo.openAccount("privacy"))}>Privacy</button>
+              <div className="home-hero">
+                <div className="home-hero__cat">
+                  <MiloCat state={snapshot.state} appearance={snapshot.settings.appearance} />
                 </div>
+                <h3>Welcome back!</h3>
+                <button className="button button--primary" type="button" onClick={() => setAppViewState("workspace")}>
+                  Open Desktop Milo
+                </button>
               </div>
-            </aside>
-
-            <div className="workspace" id="conversation-area">
-              <div className={`state-card state-card--${snapshot.state}`} role={snapshot.state === "error" ? "alert" : "status"}>
-                <StateMark state={snapshot.state} />
-                <div>
-                  <strong>{stateCopy.label}</strong>
-                  <span>{stateCopy.detail}</span>
-                </div>
-                <span className="state-card__status">{snapshot.state === "paused" ? "Paused" : isAuthenticated ? "Ready" : "Sign in"}</span>
+              <div className="home-actions">
+                <button className="button button--secondary" type="button" onClick={() => setAppViewState("room")}>Milo Room</button>
+                <button className="button button--secondary" type="button" onClick={() => setAppViewState("customize")}>Customize</button>
               </div>
-
-              <div className="privacy-strip">
+              <div className="home-stats">
+                <span>Friendship level {progress.level}</span>
+                <span>{progress.currentStreak} day streak</span>
+              </div>
+              <ProgressBar value={progress.xp} max={xpTargetForLevel(progress.level)} label="Friendship XP" />
+              <div className="home-privacy">
                 <ShieldIcon />
-                <span><strong>Local and private</strong> Milo observes only the selected window and sends the minimum context only when you ask.</span>
-              </div>
-
-              <div className="window-status">
-                <WindowIcon />
                 <div>
-                  <span>Selected window</span>
-                  <strong>{selectedWindowTitle ?? "Choose a chat to begin"}</strong>
+                  <strong>Milo&apos;s Eyes</strong>
+                  <span>{selectedWindowTitle ?? "Selected window only"}</span>
                 </div>
-                <button
-                  className="button button--secondary"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void openWindowPicker()}
-                >
-                  {selectedWindowTitle ? "Change window" : "Choose window"}
+              </div>
+            </div>
+          ) : appViewState === "settings" ? (
+            <div className="settings-layout">
+              <div className="settings-header">
+                <h2>Settings</h2>
+                <button className="text-button" type="button" onClick={() => setAppViewState("home")}>
+                  Done
                 </button>
               </div>
-
-              {windowPickerOpen && (
-                <section className="window-picker" aria-labelledby="window-picker-title">
-                  <div className="section-heading">
-                    <h2 id="window-picker-title">Choose one window</h2>
-                    <button
-                      className="text-button"
-                      type="button"
-                      onClick={() => {
-                        setWindowPickerOpen(false);
-                        setWindowCandidates([]);
-                      }}
+              <div className="settings-body-split">
+                <div className="settings-sidebar">
+                  {["general", "milo", "sound", "display", "companion", "privacy", "data"].map((tab) => (
+                    <SidebarItem
+                      key={tab}
+                      active={settingsTab === tab}
+                      className="settings-tab"
+                      onClick={() => setSettingsTab(tab)}
                     >
-                      Cancel
-                    </button>
-                  </div>
-                  <p>Milo will be bound only to the window you choose.</p>
-                  {windowCandidates.length === 0 ? (
-                    <div className="window-picker__empty" role="status">No eligible windows found.</div>
-                  ) : (
-                    <ul className="window-list">
-                      {windowCandidates.map((candidate) => (
-                        <li key={candidate.sourceId}>
-                          <button type="button" disabled={busy} onClick={() => void chooseWindow(candidate)}>
-                            {candidate.title}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </SidebarItem>
+                  ))}
+                </div>
+                <div className="settings-content">
+                  {settingsTab === "general" && (
+                    <div className="settings-block">
+                      <h3 className="settings-block__title">General</h3>
+                      <Toggle
+                        label="Start Milo with Windows"
+                        description="Uses the standard Windows startup entry."
+                        checked={snapshot.settings.launchAtLogin ?? false}
+                        onChange={(event) => void updateSettings({ launchAtLogin: event.target.checked })}
+                      />
+                      <Toggle
+                        label="Start with the workspace closed"
+                        description="Show only the small desktop companion after sign-in."
+                        checked={snapshot.settings.startMinimized ?? true}
+                        onChange={(event) => void updateSettings({ startMinimized: event.target.checked })}
+                      />
+                      <Select
+                        label="Close button"
+                        value={snapshot.settings.closeBehavior ?? "hide"}
+                        options={[
+                          { value: "hide", label: "Hide Milo" },
+                          { value: "minimize", label: "Minimize workspace" },
+                          { value: "quit", label: "Quit Milo" },
+                        ]}
+                        onChange={(event) => void updateSettings({ closeBehavior: event.target.value as "hide" | "minimize" | "quit" })}
+                      />
+                    </div>
                   )}
-                </section>
-              )}
-
-              <section className="local-preview" aria-labelledby="local-preview-title">
-                <div className="section-heading">
-                  <div>
-                    <p className="section-kicker">Privacy preview</p>
-                    <h2 id="local-preview-title">Review local context</h2>
-                  </div>
-                  <span className="section-meta">On device</span>
-                </div>
-                <p className="local-preview__intro">See the exact normalized excerpt Milo will use before you ask. Nothing is sent during this preview.</p>
-                <div className="local-preview__controls">
-                  <label className="preview-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={contextPreviewInput.removeParticipantNames}
-                      onChange={(event) => setContextPreviewInput((current) => ({ ...current, removeParticipantNames: event.target.checked }))}
-                    />
-                    <span>Remove participant names</span>
-                  </label>
-                  <label className="preview-limit">
-                    <span>Recent messages</span>
-                    <select
-                      value={contextPreviewInput.maxMessages}
-                      onChange={(event) => {
-                        const value = Number(event.target.value);
-                        if (CONTEXT_PREVIEW_MESSAGE_LIMITS.includes(value as 4 | 6 | 8)) {
-                          setContextPreviewInput((current) => ({ ...current, maxMessages: value as 4 | 6 | 8 }));
-                        }
-                      }}
-                    >
-                      {CONTEXT_PREVIEW_MESSAGE_LIMITS.map((value) => <option key={value} value={value}>{value}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <button className="button button--secondary local-preview__button" type="button" disabled={contextPreviewBusy || busy || selectedWindowTitle === undefined || snapshot.state === "paused"} onClick={() => void previewLocalContext()}>
-                  <EyeOffIcon />{contextPreviewBusy ? "Preparing preview…" : "Preview locally"}
-                </button>
-                {contextPreview !== null && (
-                  <div className="local-preview__result" role="status" aria-live="polite">
-                    <div className="local-preview__result-meta">
-                      <span>{contextPreview.messageCount} recent {contextPreview.messageCount === 1 ? "message" : "messages"}</span>
-                      <span>{contextPreview.participantNamesRemoved ? "Names removed" : "Names shown"}</span>
-                      {contextPreview.truncated && <span>Excerpt bounded</span>}
-                    </div>
-                    <pre aria-label="Normalized recent context">{contextPreview.text}</pre>
-                    <p>Minimal text will be sent only after you explicitly click Suggest.</p>
-                  </div>
-                )}
-              </section>
-
-              <div className="primary-actions">
-                <button
-                  className="button button--primary"
-                  type="button"
-                  disabled={!canSuggest}
-                  title="Suggest (Ctrl+Shift+M)"
-                  onClick={() => void askMilo()}
-                >
-                  <SparkIcon />
-                  {busy ? "Thinking…" : isAuthenticated ? "Suggest" : "Sign in to suggest"}
-                </button>
-                <button
-                  className="button button--secondary"
-                  type="button"
-                  onClick={() => void pauseWatching(snapshot.state !== "paused")}
-                >
-                  {snapshot.state === "paused" ? <PlayIcon /> : <PauseIcon />}
-                  {snapshot.state === "paused" ? "Resume" : "Pause"}
-                </button>
-                <span className="primary-actions__shortcut">Ctrl+Shift+M</span>
-              </div>
-
-              <section className="context-section" aria-labelledby="context-title">
-                <div className="section-heading">
-                  <div>
-                    <p className="section-kicker">Milo&apos;s context insight</p>
-                    <h2 id="context-title">A calm place to start</h2>
-                  </div>
-                  <span className="section-meta">Local only</span>
-                </div>
-                <div className="context-empty">
-                  <MessageIcon />
-                  <div>
-                    <strong>{selectedWindowTitle ? "Context stays on your device until you ask." : "Select a chat window first."}</strong>
-                    <span>Milo never reads another window, and sends only the minimum context when you request a suggestion.</span>
-                  </div>
-                </div>
-              </section>
-
-              <section className="messages-section" aria-labelledby="messages-title">
-                <div className="section-heading">
-                  <div>
-                    <p className="section-kicker">Recent messages</p>
-                    <h2 id="messages-title">Nothing captured</h2>
-                  </div>
-                  <span className="section-meta">On device</span>
-                </div>
-                <p className="empty-copy">When local extraction is available, Milo will show only the recent context you explicitly request.</p>
-              </section>
-
-              {requestWarning !== null && (
-                <div className="analysis-warning" role="alert">
-                  <AlertIcon />
-                  <span>{requestWarning}</span>
-                </div>
-              )}
-
-              {snapshot.state === "error" && (
-                <div className="inline-error" role="alert">
-                  <AlertIcon />
-                  <span>Milo could not complete that request. Check your selected window and try again.</span>
-                </div>
-              )}
-
-              {snapshot.replies.length > 0 && (
-                <section className="suggestions" aria-labelledby="suggestions-title">
-                  <div className="section-heading">
-                    <div>
-                      <p className="section-kicker">Milo suggests</p>
-                      <h2 id="suggestions-title">Suggestions</h2>
-                    </div>
-                    <div className="tone-quick-wrap">
-                      <label htmlFor="quick-tone-select" className="sr-only">Personality tone</label>
-                      <select
-                        id="quick-tone-select"
-                        className="tone-quick-select"
+                  {settingsTab === "milo" && (
+                    <div className="settings-block">
+                      <h3 className="settings-block__title">Personality Tone</h3>
+                      <p className="settings-desc">Choose how Milo shapes Safe, Confident, and Playful replies.</p>
+                      <SegmentedControl
+                        label="Reply personality"
                         value={snapshot.settings.activeTone ?? "standard"}
-                        onChange={(event) => {
+                        options={(["standard", "romantic", "witty", "professional"] as const).map((toneKey) => ({
+                          value: toneKey,
+                          label: TONE_PROFILE_METADATA[toneKey].title,
+                        }))}
+                        onChange={(toneKey) => {
                           sound.playClick();
-                          void updateSettings({ activeTone: event.target.value as ToneProfile });
-                        }}
-                      >
-                        <option value="standard">💬 Standard</option>
-                        <option value="romantic">✨ Romantic</option>
-                        <option value="witty">😼 Witty</option>
-                        <option value="professional">👔 Professional</option>
-                      </select>
-                      <span className="section-meta">3 options</span>
-                    </div>
-                  </div>
-                  <p className="helper-line">Click a suggestion to copy it. Edit before sending.</p>
-                  <div className="reply-cards-list">
-                    {snapshot.replies.map((reply) => {
-                      const isCopied = copiedSuggestion === reply.id;
-                      return (
-                        <article className={`reply-card reply-card--${reply.id} card bg-base-100/95 shadow-sm border border-base-content/10 hover:shadow-md transition-all duration-200`} key={reply.id}>
-                          <div className="reply-card__heading">
-                            <div className="reply-card__badge-wrap">
-                              <span className={`reply-card__category-badge reply-card__category-badge--${reply.id} badge ${reply.id === "safe" ? "badge-info" : reply.id === "confident" ? "badge-primary" : "badge-secondary"}`}>
-                                {reply.id === "safe" ? "Safe" : reply.id === "confident" ? "Confident" : "Playful"}
-                              </span>
-                              <strong className="reply-card__title">{reply.label}</strong>
-                            </div>
-                            <button
-                              className={`copy-button ${isCopied ? "copy-button--copied btn-success" : ""} btn btn-xs gap-1`}
-                              type="button"
-                              aria-label={`Copy ${reply.label}`}
-                              onClick={() => void copyReply(reply.id)}
-                            >
-                              {isCopied ? <CheckIcon /> : <CopyIcon />}
-                              <span>{isCopied ? "Copied!" : "Copy"}</span>
-                            </button>
-                          </div>
-                          <p className="reply-card__body">{reply.text}</p>
-                          <div className="reply-card__rationale">
-                            <small>{reply.explanation}</small>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
-
-              <section className="ask-section" aria-labelledby="ask-title">
-                <div className="section-heading">
-                  <div>
-                    <p className="section-kicker">Ask Milo</p>
-                    <h2 id="ask-title">Shape the suggestion</h2>
-                  </div>
-                </div>
-                <div className="ask-input-wrap">
-                  <input id="ask-milo" type="text" disabled placeholder="Available when local context is enabled" aria-describedby="ask-help" />
-                  <button type="button" className="ask-send" disabled aria-label="Ask Milo unavailable until local context is enabled"><SendIcon /></button>
-                </div>
-                <p id="ask-help" className="ask-help">Milo never sends a message for you. Review and edit every suggestion.</p>
-              </section>
-
-              <details className="disclosure">
-                <summary>Developer preview states and position</summary>
-                <div className="disclosure__body">
-                  <div className="state-lab" aria-label="Developer-only state previews">
-                    <button type="button" onClick={() => void safely(() => window.milo.previewState("notice"))}>Notice</button>
-                    <button type="button" onClick={() => void safely(() => window.milo.previewState("fail"))}>Error</button>
-                    <button type="button" onClick={() => void safely(() => window.milo.previewState("reset"))}>Reset state</button>
-                  </div>
-                  <div className="move-grid" aria-label="Move Milo">
-                    <button type="button" className="move-up" aria-label="Move Milo up" onClick={() => void moveOverlay("up", 10)}><ArrowIcon direction="up" /></button>
-                    <button type="button" className="move-left" aria-label="Move Milo left" onClick={() => void moveOverlay("left", 10)}><ArrowIcon direction="left" /></button>
-                    <button type="button" className="move-reset" aria-label="Reset Milo position" onClick={() => void safely(() => window.milo.resetPosition(), "Milo position reset.")}><ResetIcon /></button>
-                    <button type="button" className="move-right" aria-label="Move Milo right" onClick={() => void moveOverlay("right", 10)}><ArrowIcon direction="right" /></button>
-                    <button type="button" className="move-down" aria-label="Move Milo down" onClick={() => void moveOverlay("down", 10)}><ArrowIcon direction="down" /></button>
-                  </div>
-                  <p className="shortcut-note">Keyboard: Alt + arrow. Add Shift for a 40-pixel step.</p>
-                </div>
-              </details>
-
-              <details className="disclosure" open>
-                <summary id="settings-area"><span><SettingsIcon />Personality, Sound &amp; Docking</span></summary>
-                <div className="disclosure__body settings-grid">
-                  <div className="settings-block">
-                    <h3 className="settings-block__title">Personality Tone</h3>
-                    <p className="settings-desc">Choose how Milo shapes Safe, Confident, and Playful replies.</p>
-                    <div className="tone-cards-grid">
-                      {(["standard", "romantic", "witty", "professional"] as const).map((toneKey) => {
-                        const meta = TONE_PROFILE_METADATA[toneKey];
-                        const isSelected = (snapshot.settings.activeTone ?? "standard") === toneKey;
-                        return (
-                          <button
-                            key={toneKey}
-                            type="button"
-                            className={`tone-card ${isSelected ? "tone-card--selected" : ""}`}
-                            onClick={() => {
-                              sound.playClick();
-                              void updateSettings({ activeTone: toneKey });
-                            }}
-                          >
-                            <span className="tone-card__emoji">{meta.emoji}</span>
-                            <div className="tone-card__text">
-                              <strong>{meta.title}</strong>
-                              <small>{meta.description}</small>
-                            </div>
-                            {isSelected && <span className="tone-card__check"><CheckIcon /></span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="settings-block">
-                    <h3 className="settings-block__title">Sound Feedback</h3>
-                    <p className="settings-desc">Subtle synthesized feedback for actions (100–300ms).</p>
-                    <label className="checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={snapshot.settings.soundEnabled ?? true}
-                        onChange={(event) => {
-                          if (event.target.checked) sound.playClick();
-                          void updateSettings({ soundEnabled: event.target.checked });
+                          void updateSettings({ activeTone: toneKey });
                         }}
                       />
-                      <span>Enable Sound Feedback (Pops, Purrs &amp; Clicks)</span>
-                    </label>
-                    <label className="slider-row">
-                      <span>Volume: {Math.round((snapshot.settings.soundVolume ?? 0.7) * 100)}%</span>
-                      <input
-                        type="range"
+                      <p className="settings-desc">{TONE_PROFILE_METADATA[snapshot.settings.activeTone ?? "standard"].description}</p>
+                    </div>
+                  )}
+                  {settingsTab === "sound" && (
+                    <div className="settings-block">
+                      <h3 className="settings-block__title">Sound Feedback</h3>
+                      <Toggle
+                        label="Interface sounds"
+                        checked={snapshot.settings.soundEnabled ?? true}
+                        onChange={(event) => {
+                          const enabled = event.target.checked;
+                          if (enabled) sound.playClick();
+                          void updateSettings({ soundEnabled: enabled });
+                        }}
+                      />
+                      <Toggle
+                        label="New activity sound"
+                        description="Off by default so Milo stays unobtrusive."
+                        checked={snapshot.settings.noticeSoundEnabled ?? false}
+                        disabled={!(snapshot.settings.soundEnabled ?? true)}
+                        onChange={(event) => void updateSettings({ noticeSoundEnabled: event.target.checked })}
+                      />
+                      <Slider
+                        label="Volume"
+                        valueLabel={`${Math.round((snapshot.settings.soundVolume ?? 0.7) * 100)}%`}
                         min="0"
                         max="1"
                         step="0.05"
                         value={snapshot.settings.soundVolume ?? 0.7}
                         disabled={!(snapshot.settings.soundEnabled ?? true)}
+                        onChange={(event) => void updateSettings({ soundVolume: Number(event.target.value) })}
+                      />
+                      <button className="button button--secondary button--sm" type="button" disabled={!(snapshot.settings.soundEnabled ?? true)} onClick={() => sound.playPurr()}>
+                        Preview sound
+                      </button>
+                    </div>
+                  )}
+                  {settingsTab === "display" && (
+                    <div className="settings-block">
+                      <h3 className="settings-block__title">Display & Motion</h3>
+                      <Select
+                        label="Theme preference"
+                        value={snapshot.settings.theme ?? "system"}
+                        options={[
+                          { value: "system", label: "Use Windows setting" },
+                          { value: "light", label: "Light" },
+                          { value: "dark", label: "Dark" },
+                        ]}
+                        onChange={(event) => void updateSettings({ theme: event.target.value as ThemePreference })}
+                      />
+                      <Select
+                        label="Motion"
+                        value={snapshot.settings.motion ?? "system"}
+                        options={[
+                          { value: "system", label: "Use Windows setting" },
+                          { value: "full", label: "Full" },
+                          { value: "reduced", label: "Reduced" },
+                          { value: "minimal", label: "Minimal" },
+                        ]}
+                        onChange={(event) => void updateSettings({ motion: event.target.value as MotionPreference })}
+                      />
+                      <Toggle
+                        label="Watching indicator"
+                        description="Keep the selected-window status visible beside Milo."
+                        checked={snapshot.settings.showWatchingIndicator ?? true}
+                        onChange={(event) => void updateSettings({ showWatchingIndicator: event.target.checked })}
+                      />
+                    </div>
+                  )}
+                  {settingsTab === "companion" && (
+                    <div className="settings-block">
+                      <h3 className="settings-block__title">Companion Mode</h3>
+                      <Select
+                        label="Docking mode"
+                        description="Choose a fixed corner or freely drag Milo on the current display."
+                        value={snapshot.settings.dockMode === "follow-window" ? "free" : snapshot.settings.dockMode ?? "free"}
+                        options={[
+                          { value: "free", label: "Free position" },
+                          { value: "top-left", label: "Top left" },
+                          { value: "top-right", label: "Top right" },
+                          { value: "bottom-left", label: "Bottom left" },
+                          { value: "bottom-right", label: "Bottom right" },
+                        ]}
                         onChange={(event) => {
-                          const val = Number(event.target.value);
-                          void updateSettings({ soundVolume: val });
+                          sound.playClick();
+                          void updateSettings({ dockMode: event.target.value as DockMode });
                         }}
                       />
-                    </label>
-                    <label className="checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={snapshot.settings.noticeSoundEnabled ?? false}
-                        disabled={!(snapshot.settings.soundEnabled ?? true)}
-                        onChange={(event) => void updateSettings({ noticeSoundEnabled: event.target.checked })}
-                      />
-                      <span>Sound on new message detected (Off by default)</span>
-                    </label>
-                    <button
-                      type="button"
-                      className="button button--secondary button--sm"
-                      disabled={!(snapshot.settings.soundEnabled ?? true)}
-                      onClick={() => sound.playPurr()}
-                    >
-                      <VolumeIcon /> Test Sound Feedback
-                    </button>
-                  </div>
-
-                  <div className="settings-block">
-                    <h3 className="settings-block__title">Window Docking &amp; Opacity</h3>
-                    <p className="settings-desc">Keep Milo visible and accessible beside your chat.</p>
-                    <label className="checkbox-row">
-                      <input
-                        type="checkbox"
+                      <Toggle
+                        label="Always on top"
+                        description="Keep Milo visible above the selected chat window."
                         checked={snapshot.settings.isPinned ?? true}
                         onChange={(event) => {
                           sound.playClick();
                           void updateSettings({ isPinned: event.target.checked });
                         }}
                       />
-                      <span>Always on Top (Pin to foreground)</span>
-                    </label>
-                    <label className="slider-row">
-                      <span>Window Opacity: {Math.round((snapshot.settings.opacity ?? 1.0) * 100)}%</span>
-                      <input
-                        type="range"
+                      <Slider
+                        label="Resting opacity"
+                        description="Milo becomes fully visible while you interact with the companion."
+                        valueLabel={`${Math.round((snapshot.settings.opacity ?? 1) * 100)}%`}
                         min="0.75"
-                        max="1.0"
+                        max="1"
                         step="0.05"
-                        value={snapshot.settings.opacity ?? 1.0}
-                        onChange={(event) => {
-                          const val = Number(event.target.value);
-                          void updateSettings({ opacity: val });
-                        }}
+                        value={snapshot.settings.opacity ?? 1}
+                        onChange={(event) => void updateSettings({ opacity: Number(event.target.value) })}
                       />
-                    </label>
-                    <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                      {(["top-left", "top-right", "bottom-left", "bottom-right"] as const).map((dock) => (
-                        <button
-                          key={dock}
-                          type="button"
-                          className="button button--secondary button--sm"
-                          style={{ flex: 1, padding: "0 4px", fontSize: "10px" }}
-                          onClick={() => {
-                            sound.playClick();
-                            void updateSettings({ dockMode: dock });
-                          }}
-                        >
-                          {dock.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                        </button>
-                      ))}
                     </div>
-                  </div>
-
-                  <div className="settings-block">
-                    <h3 className="settings-block__title">Display &amp; Appearance</h3>
-                    <div className="cat-appearance-section" style={{ marginBottom: "12px" }}>
-                      <span className="settings-label" style={{ display: "block", marginBottom: "6px" }}>
-                        Mascot Appearance
-                      </span>
-                      <div
-                        className="cat-swatches"
-                        role="radiogroup"
-                        aria-label="Mascot appearance presets"
-                        style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                      >
-                        {CAT_APPEARANCES.map((preset) => {
-                          const isSelected = (snapshot.settings.catAppearance ?? "charcoal") === preset;
-                          const config = CAT_APPEARANCE_PRESETS[preset];
-                          return (
-                            <button
-                              key={preset}
-                              type="button"
-                              role="radio"
-                              aria-checked={isSelected}
-                              aria-label={`${config.label} appearance`}
-                              title={`${config.label} appearance`}
-                              className={`cat-swatch cat-swatch--${preset} ${isSelected ? "cat-swatch--selected" : ""}`}
-                              style={{ backgroundColor: config.cat }}
-                              onClick={() => {
-                                sound.playClick();
-                                void updateSettings({ catAppearance: preset });
-                              }}
-                            />
-                          );
-                        })}
+                  )}
+                  {settingsTab === "privacy" && (
+                    <div className="settings-block">
+                      <h3 className="settings-block__title">{"Milo's Eyes"}</h3>
+                      <div className="privacy-expanded">
+                        <h4>What Milo can see</h4>
+                        <ul>
+                          <li><strong>Allowed</strong> Selected window</li>
+                          <li className="disabled"><strong>Blocked</strong> Other windows</li>
+                          <li className="disabled"><strong>Blocked</strong> Full desktop</li>
+                          <li className="disabled"><strong>Blocked</strong> Password fields</li>
+                        </ul>
+                        <h4>Processing</h4>
+                        <p>UI Automation, capture fallback, and OCR run on this device. Only bounded recent text is sent after you ask.</p>
                       </div>
                     </div>
-                    <label>
-                      <span>Theme</span>
-                      <select
-                        value={snapshot.settings.theme}
-                        onChange={(event) => void updateSettings({ theme: event.target.value as ThemePreference })}
+                  )}
+                  {settingsTab === "data" && (
+                    <div className="settings-block">
+                      <h3 className="settings-block__title">Data</h3>
+                      <p className="settings-desc">Milo stores only content-free preferences and local companion progress. Conversation content is not included.</p>
+                      <p className="settings-desc">Export and destructive reset controls stay hidden until their reviewed main-process handlers are available.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {appViewState === "workspace" && (
+            <div className="desktop-layout">
+              <aside className="sidebar" aria-label="Milo navigation">
+                <div className="sidebar__brand">
+                  <div className="sidebar__avatar" aria-hidden="true">M</div>
+                  <div><strong>Milo</strong><span>Private companion</span></div>
+                </div>
+                <nav className="sidebar__nav" aria-label="Primary">
+                  <button className="nav-item" type="button" onClick={() => setAppViewState("home")}>Home</button>
+                  <button className="nav-item nav-item--active" type="button">Suggestions</button>
+                  <button className="nav-item" type="button" onClick={() => setAppViewState("room")}>Room</button>
+                  <button className="nav-item" type="button" onClick={() => setAppViewState("customize")}>Customize</button>
+                  <button className="nav-item" type="button" onClick={() => setAppViewState("settings")}>Settings</button>
+                </nav>
+                <div className="sidebar__privacy"><ShieldIcon /><span>Only the selected window is read, and only after you ask.</span></div>
+                <button className="sidebar__pause" type="button" onClick={() => void pauseWatching(snapshot.state !== "paused")}>
+                  {snapshot.state === "paused" ? <PlayIcon /> : <PauseIcon />}
+                  {snapshot.state === "paused" ? "Resume Milo" : "Pause Milo"}
+                </button>
+              </aside>
+
+              <div className="workspace" id="conversation-area">
+                <div className={`state-card state-card--${snapshot.state}`} role={snapshot.state === "error" ? "alert" : "status"}>
+                  <StateMark state={snapshot.state} />
+                  <div>
+                    <strong>{stateCopy.label}</strong>
+                    <span>{stateCopy.detail}</span>
+                  </div>
+                  <span className="state-card__status">{snapshot.state === "paused" ? "Paused" : isAuthenticated ? "Ready" : "Sign in"}</span>
+                </div>
+
+                <div className="privacy-strip">
+                  <ShieldIcon />
+                  <span><strong>Local and private</strong> Milo observes only the selected window and sends minimum recent text only when you ask.</span>
+                </div>
+
+                <div className="window-status">
+                  <WindowIcon />
+                  <div>
+                    <span>Selected window</span>
+                    <strong>{selectedWindowTitle ?? "Choose a chat to begin"}</strong>
+                  </div>
+                  <button className="button button--secondary" type="button" disabled={busy} onClick={() => void openWindowPicker()}>
+                    {selectedWindowTitle ? "Change window" : "Choose window"}
+                  </button>
+                </div>
+
+                {windowPickerOpen && (
+                  <section className="window-picker" aria-labelledby="window-picker-title">
+                    <div className="section-heading">
+                      <h2 id="window-picker-title">Choose one window</h2>
+                      <button
+                        className="text-button"
+                        type="button"
+                        onClick={() => {
+                          setWindowPickerOpen(false);
+                          setWindowCandidates([]);
+                        }}
                       >
-                        <option value="system">Use Windows setting</option>
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Motion</span>
-                      <select
-                        value={snapshot.settings.motion}
-                        onChange={(event) => void updateSettings({ motion: event.target.value as MotionPreference })}
-                      >
-                        <option value="system">Use Windows setting</option>
-                        <option value="full">Full</option>
-                        <option value="reduced">Reduced</option>
-                      </select>
-                    </label>
-                    <label className="checkbox-row">
+                        Cancel
+                      </button>
+                    </div>
+                    <p>Milo will remain bound to only this window until you choose another one.</p>
+                    {windowCandidates.length === 0 ? (
+                      <div className="window-picker__empty" role="status">No eligible windows found.</div>
+                    ) : (
+                      <ul className="window-list">
+                        {windowCandidates.map((candidate) => (
+                          <li key={candidate.sourceId}>
+                            <button type="button" disabled={busy} onClick={() => void chooseWindow(candidate)}>
+                              {candidate.title}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                )}
+
+                <section className="local-preview" aria-labelledby="local-preview-title">
+                  <div className="section-heading">
+                    <div>
+                      <p className="section-kicker">Privacy preview</p>
+                      <h2 id="local-preview-title">Review local context</h2>
+                    </div>
+                    <span className="section-meta">On device</span>
+                  </div>
+                  <p className="local-preview__intro">Review the exact normalized excerpt before requesting suggestions. Previewing does not call the AI service.</p>
+                  <div className="local-preview__controls">
+                    <label className="preview-checkbox">
                       <input
                         type="checkbox"
-                        checked={snapshot.settings.showWatchingIndicator}
-                        onChange={(event) => void updateSettings({ showWatchingIndicator: event.target.checked })}
+                        checked={contextPreviewInput.removeParticipantNames}
+                        onChange={(event) => setContextPreviewInput((current) => ({ ...current, removeParticipantNames: event.target.checked }))}
                       />
-                      <span>Show compact watching indicator</span>
+                      <span>Remove participant names</span>
+                    </label>
+                    <label className="preview-limit">
+                      <span>Recent messages</span>
+                      <select
+                        value={contextPreviewInput.maxMessages}
+                        onChange={(event) => {
+                          const value = Number(event.target.value);
+                          if (CONTEXT_PREVIEW_MESSAGE_LIMITS.includes(value as 4 | 6 | 8)) {
+                            setContextPreviewInput((current) => ({ ...current, maxMessages: value as 4 | 6 | 8 }));
+                          }
+                        }}
+                      >
+                        {CONTEXT_PREVIEW_MESSAGE_LIMITS.map((value) => <option key={value} value={value}>{value}</option>)}
+                      </select>
                     </label>
                   </div>
+                  <button
+                    className="button button--secondary local-preview__button"
+                    type="button"
+                    disabled={contextPreviewBusy || busy || selectedWindowTitle === undefined || snapshot.state === "paused"}
+                    onClick={() => void previewLocalContext()}
+                  >
+                    <EyeOffIcon />{contextPreviewBusy ? "Preparing preview…" : "Preview locally"}
+                  </button>
+                  {contextPreview !== null && (
+                    <div className="local-preview__result" role="status" aria-live="polite">
+                      <div className="local-preview__result-meta">
+                        <span>{contextPreview.messageCount} recent {contextPreview.messageCount === 1 ? "message" : "messages"}</span>
+                        <span>{contextPreview.participantNamesRemoved ? "Names removed" : "Names shown"}</span>
+                        {contextPreview.truncated && <span>Excerpt bounded</span>}
+                      </div>
+                      <pre aria-label="Normalized recent context">{contextPreview.text}</pre>
+                      <p>Only this bounded text is eligible to be sent after you click Suggest.</p>
+                    </div>
+                  )}
+                </section>
+
+                <div className="primary-actions">
+                  <button className="button button--primary" type="button" disabled={!canSuggest} onClick={() => void askMilo()}>
+                    <SparkIcon />{busy ? "Thinking…" : isAuthenticated ? "Suggest" : "Sign in to suggest"}
+                  </button>
+                  <button className="button button--secondary" type="button" onClick={() => void pauseWatching(snapshot.state !== "paused")}>
+                    {snapshot.state === "paused" ? <PlayIcon /> : <PauseIcon />}
+                    {snapshot.state === "paused" ? "Resume" : "Pause"}
+                  </button>
+                  <span className="primary-actions__shortcut">Alt+S</span>
                 </div>
-              </details>
+
+                {requestWarning !== null && (
+                  <div className="analysis-warning" role="alert"><AlertIcon /><span>{requestWarning}</span></div>
+                )}
+                {snapshot.state === "error" && (
+                  <div className="inline-error" role="alert"><AlertIcon /><span>Milo could not complete that request. Check the selected window and try again.</span></div>
+                )}
+
+                {snapshot.replies.length > 0 ? (
+                  <section className="suggestions" aria-labelledby="suggestions-title">
+                    <div className="section-heading">
+                      <div><p className="section-kicker">Milo suggests</p><h2 id="suggestions-title">Three options</h2></div>
+                      <label className="tone-quick-wrap">
+                        <span className="sr-only">Personality tone</span>
+                        <select
+                          className="tone-quick-select"
+                          value={snapshot.settings.activeTone ?? "standard"}
+                          onChange={(event) => void updateSettings({ activeTone: event.target.value as ToneProfile })}
+                        >
+                          <option value="standard">Friend and dating</option>
+                          <option value="romantic">Flirty</option>
+                          <option value="witty">Witty</option>
+                          <option value="professional">Professional</option>
+                        </select>
+                      </label>
+                    </div>
+                    <p className="helper-line">Copy a suggestion, edit it in your chat app, and decide whether to send it.</p>
+                    <div className="reply-cards-list">
+                      {snapshot.replies.map((reply) => {
+                        const isCopied = copiedSuggestion === reply.id;
+                        return (
+                          <article className={`reply-card reply-card--${reply.id}`} key={reply.id}>
+                            <div className="reply-card__heading">
+                              <div className="reply-card__badge-wrap">
+                                <span className={`reply-card__category-badge reply-card__category-badge--${reply.id}`}>
+                                  {reply.id === "safe" ? "Safe" : reply.id === "confident" ? "Confident" : "Playful"}
+                                </span>
+                                <strong className="reply-card__title">{reply.label}</strong>
+                              </div>
+                              <button className={`copy-button ${isCopied ? "copy-button--copied" : ""}`} type="button" onClick={() => void copyReply(reply.id)}>
+                                {isCopied ? <CheckIcon /> : <CopyIcon />}<span>{isCopied ? "Copied" : "Copy"}</span>
+                              </button>
+                            </div>
+                            <p className="reply-card__body">{reply.text}</p>
+                            <div className="reply-card__rationale"><small>{reply.explanation}</small></div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ) : (
+                  <section className="context-section" aria-labelledby="context-title">
+                    <div className="section-heading"><div><p className="section-kicker">Suggestions</p><h2 id="context-title">Ready when you are</h2></div></div>
+                    <div className="context-empty"><MessageIcon /><div><strong>{selectedWindowTitle ? "Ask Milo when you want a second opinion." : "Select one chat window first."}</strong><span>No message is ever pasted or sent automatically.</span></div></div>
+                  </section>
+                )}
+              </div>
+
+              <aside className="companion-rail" aria-label="Milo companion status">
+                <div className="companion-rail__topline">
+                  <span className={`companion-rail__status-dot companion-rail__status-dot--${snapshot.state === "paused" ? "paused" : selectedWindowTitle === undefined ? "idle" : "active"}`} aria-hidden="true" />
+                  <span>{snapshot.state === "paused" ? "Paused" : selectedWindowTitle === undefined ? "Not watching" : "Watching locally"}</span>
+                  <button className="companion-rail__settings" type="button" aria-label="Open settings" onClick={() => setAppViewState("settings")}><SettingsIcon /></button>
+                </div>
+                <div className="companion-rail__cat"><MiloCat state={snapshot.state} appearance={appearance} /></div>
+                <h2>Milo</h2>
+                <p className="companion-rail__subtitle">A calm second opinion.</p>
+                <div className="companion-rail__watching"><span>Selected window</span><strong>{selectedWindowTitle ?? "None selected"}</strong></div>
+                <div className="companion-rail__actions">
+                  <button className="button button--primary" type="button" disabled={!canSuggest} onClick={() => void askMilo()}><SparkIcon />Suggest</button>
+                  <button className="button button--secondary" type="button" disabled={!canSuggest} onClick={() => void askMilo("screen_capture")}><WindowIcon />Use OCR fallback</button>
+                </div>
+                <div className="companion-rail__private"><ShieldIcon /><span><strong>Local first</strong> Milo never sends a reply for you.</span></div>
+              </aside>
             </div>
+          )}
 
-            <aside className="companion-rail" aria-label="Milo companion status">
-              <div className="companion-rail__topline">
-                <span className={`companion-rail__status-dot companion-rail__status-dot--${snapshot.state === "paused" ? "paused" : selectedWindowTitle === undefined ? "idle" : "active"}`} aria-hidden="true" />
-                <span>{snapshot.state === "paused" ? "Paused" : selectedWindowTitle === undefined ? "Not watching" : "Watching locally"}</span>
-                <button className="companion-rail__settings" type="button" aria-label="Open appearance and privacy settings" onClick={() => document.getElementById("settings-area")?.scrollIntoView({ block: "nearest" })}>
-                  <SettingsIcon />
-                </button>
+          {appViewState === "customize" && (
+            <div className="settings-layout">
+              <div className="settings-header">
+                <h2>Customize Milo</h2>
+                <button className="text-button" type="button" onClick={() => setAppViewState("home")}>Done</button>
               </div>
-              <div className="companion-rail__cat"><MiloCat state={snapshot.state} /></div>
-              <h2>Milo</h2>
-              <p className="companion-rail__subtitle">A calm second opinion.</p>
-              <div className="companion-rail__watching">
-                <span>Listening to</span>
-                <strong>{selectedWindowTitle ?? "No window selected"}</strong>
+              <div className="settings-body">
+                <div className="home-hero">
+                  <div className="home-hero__cat" style={{ transform: "scale(1.5)", marginBottom: 16 }}>
+                    <MiloCat state={snapshot.state} appearance={snapshot.settings.appearance} />
+                  </div>
+                </div>
+                <div className="settings-block">
+                  <h3 className="settings-block__title">Fur Color</h3>
+                  <div className="tone-cards-grid">
+                    {CAT_APPEARANCES.map((fur) => {
+                      const isSelected = appearance.fur === fur;
+                      return (
+                        <button
+                          key={fur}
+                          className={`tone-card ${isSelected ? "tone-card--selected" : ""}`}
+                          onClick={() => {
+                            if (sound.playClick) sound.playClick();
+                            void updateSettings({ appearance: { ...appearance, fur } });
+                          }}
+                        >
+                          <div className="tone-card__text">
+                            <strong>{fur.charAt(0).toUpperCase() + fur.slice(1)}</strong>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="settings-block">
+                  <h3 className="settings-block__title">Animation Personality</h3>
+                  <div className="tone-cards-grid">
+                    {(["calm", "energetic", "chaotic", "sleepy"] as const).map((personality) => {
+                      const isSelected = appearance.animationPersonality === personality;
+                      return (
+                        <button
+                          key={personality}
+                          className={`tone-card ${isSelected ? "tone-card--selected" : ""}`}
+                          onClick={() => {
+                            if (sound.playClick) sound.playClick();
+                            void updateSettings({ appearance: { ...appearance, animationPersonality: personality } });
+                          }}
+                        >
+                          <div className="tone-card__text">
+                            <strong>{personality.charAt(0).toUpperCase() + personality.slice(1)}</strong>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="companion-rail__actions">
-                <button className="button button--primary" type="button" disabled={!canSuggest} title="Suggest (Ctrl+Shift+M)" onClick={() => void askMilo()}><SparkIcon />{isAuthenticated ? "Suggest" : "Sign in to suggest"}</button>
-                <button className="button button--secondary" type="button" disabled={!canSuggest} title="Screenshot & suggest" onClick={() => void askMilo("screen_capture")}><WindowIcon />Screenshot</button>
-                <button className="button button--secondary" type="button" onClick={() => void pauseWatching(snapshot.state !== "paused")}>{snapshot.state === "paused" ? <PlayIcon /> : <PauseIcon />} {snapshot.state === "paused" ? "Resume" : "Pause Milo"}</button>
-              </div>
-              <div className="companion-rail__private"><ShieldIcon /><span><strong>Local &amp; private</strong> No automatic sending. You stay in control.</span></div>
-              <button className="companion-rail__open" type="button" aria-label="Close Milo panel" onClick={() => void togglePanel(false)}>Close panel <span aria-hidden="true">↘</span></button>
-            </aside>
-          </div>
+            </div>
+          )}
 
-          <footer className="panel__footer">
+          {appViewState === "room" && (
+            <div className="settings-layout">
+              <div className="settings-header">
+                <h2>Milo&apos;s Room</h2>
+                <button className="text-button" type="button" onClick={() => setAppViewState("home")}>Done</button>
+              </div>
+              <div className="settings-body" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                <div style={{ position: "relative", width: "100%", height: 200, backgroundColor: "var(--bg-surface)", overflow: "hidden", borderRadius: "var(--radius-small)" }}>
+                  {snapshot.settings.room?.items?.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`room-item room-item--${item.id}`}
+                      aria-label={item.id}
+                      style={{ left: item.x, top: item.y, transform: `scale(${item.scale}) rotate(${item.rotation ?? 0}deg)` }}
+                    >
+                      <span aria-hidden="true" />
+                    </div>
+                  ))}
+                  <div style={{ position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)" }}>
+                    <MiloCat state={snapshot.state} appearance={snapshot.settings.appearance} />
+                  </div>
+                </div>
+                <div className="settings-block" style={{ marginTop: 16 }}>
+                  <h3 className="settings-block__title">Furniture</h3>
+                  <div className="tone-cards-grid">
+                    {["plant", "rug", "lamp"].map((id, index) => {
+                      const items = snapshot.settings.room?.items ?? [];
+                      const hasItem = items.some((item) => item.id === id);
+                      return (
+                        <button
+                          key={id}
+                          className={`tone-card ${hasItem ? "tone-card--selected" : ""}`}
+                          onClick={() => {
+                            const newItems = hasItem
+                              ? items.filter((item) => item.id !== id)
+                              : [...items, { id, x: 36 + index * 82, y: 84 + (index % 2) * 28, scale: 1 }];
+                            void updateSettings({
+                              room: {
+                                background: snapshot.settings.room?.background ?? "default",
+                                items: newItems,
+                              },
+                            });
+                          }}
+                        >
+                          <div className="tone-card__text"><strong>{id}</strong></div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+<footer className="panel__footer">
             <span>Milo never sends messages for you.</span>
             <button type="button" className="text-button" onClick={() => void safely(() => window.milo.quit())}>Quit</button>
           </footer>

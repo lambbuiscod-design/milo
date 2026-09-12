@@ -18,11 +18,15 @@ describe("Adversarial Empirical Verification: Design Tokens & UI Primitives", ()
 
     it("verifies global canvas foundations and brand accents in :root", () => {
       expect(stylesContent).toContain("--bg-primary: #10131F;");
-      expect(stylesContent).toContain("--bg-secondary: #171B2B;");
-      expect(stylesContent).toContain("--bg-tertiary: #1F2438;");
-      expect(stylesContent).toContain("--bg-elevated: #262D45;");
+      expect(stylesContent).toContain("--bg-secondary: #181D2D;");
+      expect(stylesContent).toContain("--bg-tertiary: #20263A;");
+      expect(stylesContent).toContain("--bg-elevated: #262E45;");
       expect(stylesContent).toContain("--bg-sunken: #0B0D15;");
       expect(stylesContent).toContain("--milo-coral: #FF8066;");
+      expect(stylesContent).toContain("--milo-peach: #FFAE8F;");
+      expect(stylesContent).toContain("--milo-purple: #886CFF;");
+      expect(stylesContent).toContain("--milo-mint: #60E6BD;");
+      expect(stylesContent).toContain("--milo-danger: #FF6070;");
       expect(stylesContent).toContain("--milo-coral-hover: #FF947D;");
       expect(stylesContent).toContain("--milo-coral-active: #E66D54;");
       expect(stylesContent).toContain("--on-milo-coral: #10131F;");

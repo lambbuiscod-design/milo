@@ -9,7 +9,7 @@ export const DESKTOP_STATES = [
 
 export type DesktopState = (typeof DESKTOP_STATES)[number];
 export type ThemePreference = "system" | "light" | "dark";
-export type MotionPreference = "system" | "full" | "reduced";
+export type MotionPreference = "system" | "full" | "reduced" | "minimal";
 export type PanelPlacement = "right-down" | "right-up" | "left-down" | "left-up";
 export type SuggestionId = "safe" | "confident" | "playful";
 export type PreviewAction = "notice" | "generate" | "fail" | "reset";
@@ -17,6 +17,10 @@ export type PositionDirection = "up" | "right" | "down" | "left";
 export type AccountDestination = "account" | "billing" | "privacy" | "terms";
 export type ToneProfile = "standard" | "romantic" | "witty" | "professional";
 export type DockMode = "free" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "follow-window";
+export type CloseBehavior = "hide" | "minimize" | "quit";
+export type LanguagePreference = "system" | "en" | "it";
+export const APP_VIEWS = ["home", "workspace", "room", "customize", "settings"] as const;
+export type AppView = (typeof APP_VIEWS)[number];
 
 export const CAT_APPEARANCES = ["charcoal", "slate", "mauve", "caramel"] as const;
 export type CatAppearance = (typeof CAT_APPEARANCES)[number];
@@ -39,10 +43,17 @@ export type PublicSettings = Readonly<{
   opacity?: number;
   isPinned?: boolean;
   dockMode?: DockMode;
+  launchAtLogin?: boolean;
+  startMinimized?: boolean;
+  closeBehavior?: CloseBehavior;
+  language?: LanguagePreference;
+  appearance?: MiloAppearance;
+  progress?: MiloProgress;
+  room?: RoomState;
   catAppearance?: CatAppearance;
 }>;
 
-export type PublicSettingsPatch = Partial<PublicSettings>;
+export type PublicSettingsPatch = Partial<Omit<PublicSettings, "progress">>;
 
 export type SyntheticSuggestion = Readonly<{
   id: SuggestionId;
@@ -307,6 +318,7 @@ export type MiloDesktopApi = Readonly<{
   openContextMenu(): Promise<void>;
   quit(): Promise<void>;
   onStateChanged(listener: (state: DesktopSnapshot) => void): () => void;
+  onNavigate(listener: (view: AppView) => void): () => void;
   triggerCharacterAction(input: TriggerCharacterActionInput): Promise<void>;
 }>;
 
@@ -329,6 +341,7 @@ export const IPC_CHANNELS = {
   openContextMenu: "milo:open-context-menu",
   quit: "milo:quit",
   stateChanged: "milo:state-changed",
+  navigate: "milo:navigate",
   triggerCharacterAction: "milo:trigger-character-action",
 } as const;
 
@@ -351,6 +364,7 @@ export const PRELOAD_METHOD_ALLOWLIST = [
   "openContextMenu",
   "quit",
   "onStateChanged",
+  "onNavigate",
   "triggerCharacterAction",
 ] as const satisfies readonly (keyof MiloDesktopApi)[];
 
@@ -374,3 +388,41 @@ export const SYNTHETIC_SUGGESTIONS: readonly SyntheticSuggestion[] = Object.free
     explanation: "A light example with personality. It is not based on captured content.",
   }),
 ]);
+
+
+
+export type AnimationPersonality = "calm" | "energetic" | "chaotic" | "sleepy";
+
+export interface MiloAccessories {
+  head?: string;
+  face?: string;
+  neck?: string;
+  body?: string;
+}
+
+export interface MiloAppearance {
+  fur: CatAppearance;
+  eyes: string;
+  clothing?: string;
+  accessories: MiloAccessories;
+  animationPersonality: AnimationPersonality;
+}
+
+export interface MiloProgress {
+  xp: number;
+  level: number;
+  firstMetAt: string;
+  currentStreak: number;
+}
+
+export interface RoomItemState {
+  id: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation?: number;
+}
+export interface RoomState {
+  background: string;
+  items: RoomItemState[];
+}

@@ -4,6 +4,7 @@ import { shouldReduceMotion } from "../src/shared/motion";
 describe("reduced motion preference", () => {
   it("respects an explicit setting before the Windows setting", () => {
     expect(shouldReduceMotion("reduced", false)).toBe(true);
+    expect(shouldReduceMotion("minimal", false)).toBe(true);
     expect(shouldReduceMotion("full", true)).toBe(false);
   });
 

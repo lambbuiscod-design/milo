@@ -88,6 +88,7 @@ describe("Electron renderer security policy", () => {
       "openContextMenu",
       "quit",
       "onStateChanged",
+      "onNavigate",
       "triggerCharacterAction",
     ]);
     expect(API_ALLOWLIST).not.toContain("send");

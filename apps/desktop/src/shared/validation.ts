@@ -1,7 +1,8 @@
 import { z } from "zod";
 import {
   CHARACTER_STATES,
-  type CharacterAnimationSnapshot,
+  APP_VIEWS,
+  type AppView,
   type CharacterStateSnapshot,
   DESKTOP_STATES,
   type AccountDestination,
@@ -26,11 +27,54 @@ import {
 
 const MAX_IPC_PAYLOAD_BYTES = 4_096;
 const themeSchema = z.enum(["system", "light", "dark"]);
-const motionSchema = z.enum(["system", "full", "reduced"]);
+const motionSchema = z.enum(["system", "full", "reduced", "minimal"]);
 const suggestionIdSchema = z.enum(["safe", "confident", "playful"]);
 const toneProfileSchema = z.enum(["standard", "romantic", "witty", "professional"]);
 const dockModeSchema = z.enum(["free", "top-left", "top-right", "bottom-left", "bottom-right", "follow-window"]);
 const catAppearanceSchema = z.enum(["charcoal", "slate", "mauve", "caramel"]);
+const cosmeticIdSchema = z.string().min(1).max(48).regex(/^[a-z0-9_-]+$/);
+const appearanceSchema = z
+  .object({
+    fur: catAppearanceSchema,
+    eyes: cosmeticIdSchema,
+    clothing: cosmeticIdSchema.optional(),
+    accessories: z
+      .object({
+        head: cosmeticIdSchema.optional(),
+        face: cosmeticIdSchema.optional(),
+        neck: cosmeticIdSchema.optional(),
+        body: cosmeticIdSchema.optional(),
+      })
+      .strict(),
+    animationPersonality: z.enum(["calm", "energetic", "chaotic", "sleepy"]),
+  })
+  .strict();
+const progressSchema = z
+  .object({
+    xp: z.number().int().min(0).max(1_000_000),
+    level: z.number().int().min(1).max(100),
+    firstMetAt: z.string().datetime(),
+    currentStreak: z.number().int().min(0).max(10_000),
+  })
+  .strict();
+const roomSchema = z
+  .object({
+    background: cosmeticIdSchema,
+    items: z
+      .array(
+        z
+          .object({
+            id: cosmeticIdSchema,
+            x: z.number().finite().min(0).max(1_000),
+            y: z.number().finite().min(0).max(1_000),
+            scale: z.number().finite().min(0.5).max(2),
+            rotation: z.number().finite().min(-180).max(180).optional(),
+          })
+          .strict(),
+      )
+      .max(32),
+  })
+  .strict();
 
 const settingsSchema = z
   .object({
@@ -44,10 +88,17 @@ const settingsSchema = z
     opacity: z.number().min(0.75).max(1).optional(),
     isPinned: z.boolean().optional(),
     dockMode: dockModeSchema.optional(),
+    launchAtLogin: z.boolean().optional(),
+    startMinimized: z.boolean().optional(),
+    closeBehavior: z.enum(["hide", "minimize", "quit"]).optional(),
+    language: z.enum(["system", "en", "it"]).optional(),
     catAppearance: catAppearanceSchema.optional(),
+    appearance: appearanceSchema.optional(),
+    progress: progressSchema.optional(),
+    room: roomSchema.optional(),
   })
   .strict();
-const settingsPatchSchema = settingsSchema.partial().strict();
+const settingsPatchSchema = settingsSchema.omit({ progress: true }).partial().strict();
 export const updateSettingsSchema = settingsPatchSchema;
 const authSummarySchema = z.object({
   status: z.enum(["signed_out", "authenticated", "unavailable", "error"]),
@@ -277,6 +328,10 @@ export function parseCharacterStateSnapshot(value: unknown): CharacterStateSnaps
   return parse(characterStateSnapshotSchema, value);
 }
 
+export function parseAppView(value: unknown): AppView {
+  return parse(z.enum(APP_VIEWS), value);
+}
+
 export const triggerCharacterActionInputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("drag_start") }).strict(),
   z.object({
@@ -295,5 +350,3 @@ export const triggerCharacterActionInputSchema = z.discriminatedUnion("action", 
 export function parseTriggerCharacterActionInput(value: unknown): TriggerCharacterActionInput {
   return parse(triggerCharacterActionInputSchema, value);
 }
-
-

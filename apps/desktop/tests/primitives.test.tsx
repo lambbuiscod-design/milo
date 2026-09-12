@@ -7,6 +7,7 @@ import {
   Container,
   SectionGroup,
   Stack,
+  Tooltip,
 } from "../src/renderer/components/primitives";
 
 describe("UI Primitives (apps/desktop/src/renderer/components/primitives)", () => {
@@ -160,6 +161,15 @@ describe("UI Primitives (apps/desktop/src/renderer/components/primitives)", () =
       expect(html).toContain("Preferences");
       expect(html).toContain("milo-section-group__action");
       expect(html).toContain("Group content");
+    });
+  });
+
+  describe("accessible overlays", () => {
+    it("connects tooltip content to its trigger without an image asset", () => {
+      const html = renderToString(<Tooltip content="Stored only on this device"><button type="button">Privacy</button></Tooltip>);
+      expect(html).toContain('role="tooltip"');
+      expect(html).toContain("aria-describedby");
+      expect(html).toContain("Stored only on this device");
     });
   });
 });

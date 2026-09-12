@@ -221,13 +221,13 @@ export function useCompanionInteraction({
     setPupilOffset({ x: 0, y: 0 });
   };
 
-  const handlePointerEnter = (_e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerEnter = () => {
     if (characterState === "idle") {
       void triggerAction({ action: "look_around" });
     }
   };
 
-  const handlePointerLeave = (_e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerLeave = () => {
     if (!dragActiveRef.current) {
       setPupilOffset({ x: 0, y: 0 });
     }
@@ -329,7 +329,11 @@ export function CompanionApp() {
         }}
         {...handlers}
       >
-        <MiloCat state={characterState} pupilOffset={pupilOffset} />
+        <MiloCat
+          state={characterState}
+          pupilOffset={pupilOffset}
+          appearance={snapshot?.settings.appearance}
+        />
       </div>
     </div>
   );
