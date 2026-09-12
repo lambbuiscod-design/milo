@@ -66,7 +66,7 @@ const roomSchema = z
     items: z.array(roomItemSchema).max(32).default([]),
   })
   .strict();
-const persistedSettingsSchema = z
+const persistedSettingsV1Schema = z
   .object({
     version: z.literal(1),
     theme: z.enum(["system", "light", "dark"]),
@@ -102,10 +102,23 @@ const persistedSettingsSchema = z
   })
   .strict();
 
+const xpPolicySchema = z
+  .object({
+    lastAwardAt: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+    awardDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+    dailyEarned: z.number().int().min(0).max(20).default(0),
+  })
+  .strict();
+
+const persistedSettingsSchema = persistedSettingsV1Schema.extend({
+  version: z.literal(2),
+  xpPolicy: xpPolicySchema.default({ lastAwardAt: 0, awardDay: null, dailyEarned: 0 }),
+}).strict();
+
 type PersistedSettings = z.infer<typeof persistedSettingsSchema>;
 
 const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
-  version: 1,
+  version: 2,
   theme: "system",
   motion: "system",
   showWatchingIndicator: true,
@@ -124,6 +137,7 @@ const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
   appearance: { fur: "charcoal" as const, eyes: "classic", accessories: {}, animationPersonality: "calm" as const },
   progress: { xp: 0, level: 1, firstMetAt: new Date().toISOString(), currentStreak: 0 },
   room: { background: "default", items: [] },
+  xpPolicy: { lastAwardAt: 0, awardDay: null, dailyEarned: 0 },
   paused: false,
   overlayPositions: Object.freeze({}),
 });
@@ -132,10 +146,12 @@ export class ContentFreeSettingsStore {
   readonly #directory: string;
   readonly #filePath: string;
   #settings: PersistedSettings;
+  readonly #now: () => Date;
 
-  constructor(userDataDirectory: string) {
+  constructor(userDataDirectory: string, options: { now?: () => Date } = {}) {
     this.#directory = userDataDirectory;
     this.#filePath = path.join(userDataDirectory, "milo-settings.json");
+    this.#now = options.now ?? (() => new Date());
     this.#settings = this.#read();
   }
 
@@ -188,26 +204,18 @@ export class ContentFreeSettingsStore {
     return this.#settings.overlayPositions[displayId] ?? null;
   }
 
-  #lastXpTime = 0;
-  #dailyXp = 0;
-  #xpDay = "";
-
-  addXp(amount: number): void {
-    if (!Number.isInteger(amount) || amount < 1 || amount > 20) return;
-    const now = Date.now();
-    const today = new Date().toDateString();
-
-    if (this.#xpDay !== today) {
-      this.#xpDay = today;
-      this.#dailyXp = 0;
-    }
+  addXp(amount: number): boolean {
+    if (!Number.isInteger(amount) || amount < 1 || amount > 20) return false;
+    const now = this.#now();
+    const nowMs = now.getTime();
+    if (!Number.isFinite(nowMs)) return false;
+    const today = now.toISOString().slice(0, 10);
+    const policy = this.#settings.xpPolicy;
+    const dailyEarned = policy.awardDay === today ? policy.dailyEarned : 0;
 
     // Rate limit: max 1 per 2 seconds, max 20 per day
-    if (now - this.#lastXpTime < 2000) return;
-    if (this.#dailyXp >= 20) return;
-
-    this.#lastXpTime = now;
-    this.#dailyXp += amount;
+    if (nowMs - policy.lastAwardAt < 2000) return false;
+    if (dailyEarned + amount > 20) return false;
 
     const current = this.#settings.progress;
     let newXp = current.xp + amount;
@@ -227,15 +235,27 @@ export class ContentFreeSettingsStore {
       }
     }
 
+    const previousDay = this.#settings.xpPolicy.awardDay;
+    const previousDayMs = previousDay === null ? Number.NaN : Date.parse(`${previousDay}T00:00:00.000Z`);
+    const todayMs = Date.parse(`${today}T00:00:00.000Z`);
+    const currentStreak = previousDay === today
+      ? current.currentStreak
+      : previousDayMs === todayMs - 86_400_000
+        ? Math.min(10_000, current.currentStreak + 1)
+        : 1;
+
     this.#settings = persistedSettingsSchema.parse({
       ...this.#settings,
       progress: {
         ...current,
         xp: newXp,
-        level: newLevel
-      }
+        level: newLevel,
+        currentStreak,
+      },
+      xpPolicy: { lastAwardAt: nowMs, awardDay: today, dailyEarned: dailyEarned + amount },
     });
     this.#write();
+    return true;
   }
 
   setOverlayPosition(displayId: string, position: Point): void {
@@ -258,7 +278,20 @@ export class ContentFreeSettingsStore {
         return { ...DEFAULT_SETTINGS, overlayPositions: {} };
       }
       const parsed: unknown = JSON.parse(readFileSync(this.#filePath, "utf8"));
-      return persistedSettingsSchema.parse(parsed);
+      const current = persistedSettingsSchema.safeParse(parsed);
+      if (current.success) return current.data;
+      const legacy = persistedSettingsV1Schema.safeParse(parsed);
+      if (legacy.success) {
+        const migrated = persistedSettingsSchema.parse({
+          ...legacy.data,
+          version: 2,
+          xpPolicy: { lastAwardAt: 0, awardDay: null, dailyEarned: 0 },
+        });
+        this.#settings = migrated;
+        this.#write();
+        return migrated;
+      }
+      return { ...DEFAULT_SETTINGS, overlayPositions: {} };
     } catch {
       return { ...DEFAULT_SETTINGS, overlayPositions: {} };
     }
@@ -296,6 +329,6 @@ export class ContentFreeSettingsStore {
 }
 
 export function isContentFreeSettings(value: unknown): boolean {
-  return persistedSettingsSchema.safeParse(value).success;
+  return persistedSettingsSchema.safeParse(value).success || persistedSettingsV1Schema.safeParse(value).success;
 }
 
