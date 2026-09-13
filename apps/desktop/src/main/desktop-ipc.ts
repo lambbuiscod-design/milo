@@ -196,6 +196,12 @@ export function registerDesktopIpc({
     contextPreviewOptions = null;
   };
 
+  const preferredOcrLanguage = (): "en" | "it" => {
+    const preference = settingsStore.getPublicSettings().language ?? "system";
+    if (preference === "en" || preference === "it") return preference;
+    return app.getLocale().toLowerCase().startsWith("it") ? "it" : "en";
+  };
+
   const snapshot = (): DesktopSnapshot => ({
     state,
     panelOpen: overlay.panelOpen,
@@ -294,7 +300,7 @@ export function registerDesktopIpc({
         if (refreshed.nativeIdentity !== null && state !== "generating" && now - lastContextCheckAt >= 3_000) {
           lastContextCheckAt = now;
           try {
-            const extracted = await extractLocalContext(nativeHelper, refreshed.nativeIdentity, 6_000);
+            const extracted = await extractLocalContext(nativeHelper, refreshed.nativeIdentity, 6_000, preferredOcrLanguage());
             const normalized = normalizeRecentContext(extracted.text, {
               maxMessages: 8,
               removeParticipantNames: true,
@@ -402,7 +408,7 @@ export function registerDesktopIpc({
       } else {
         if (currentWindow.nativeIdentity !== null) {
           try {
-            const extracted = await extractLocalContext(nativeHelper, currentWindow.nativeIdentity, 6_000);
+            const extracted = await extractLocalContext(nativeHelper, currentWindow.nativeIdentity, 6_000, preferredOcrLanguage());
             rawText = extracted.text;
           } catch (localError) {
             try {
@@ -595,7 +601,7 @@ export function registerDesktopIpc({
     let extractedTruncated = false;
     if (currentWindow.nativeIdentity !== null) {
       try {
-        const extracted = await extractLocalContext(nativeHelper, currentWindow.nativeIdentity, 6_000);
+        const extracted = await extractLocalContext(nativeHelper, currentWindow.nativeIdentity, 6_000, preferredOcrLanguage());
         extractedText = extracted.text;
         extractedTruncated = extracted.truncated;
       } catch {

@@ -25,6 +25,21 @@ describe("selected-window local extraction priority", () => {
     expect(helper.captureText).toHaveBeenCalledTimes(2);
   });
 
+  it("tries the locally selected OCR language first", async () => {
+    const helper = {
+      extractText: vi.fn(async () => ({ text: "Chat", truncated: false })),
+      captureText: vi.fn(async (_identity, language: "en" | "it") => language === "it"
+        ? { text: "Altro: Ci vediamo stasera?\nIo: Volentieri, alle otto.", truncated: false }
+        : { text: "", truncated: false }),
+    };
+    await expect(extractLocalContext(helper as never, identity, 6_000, "it")).resolves.toMatchObject({
+      method: "local_ocr",
+      language: "it",
+    });
+    expect(helper.captureText).toHaveBeenCalledTimes(1);
+    expect(helper.captureText.mock.calls[0]?.[1]).toBe("it");
+  });
+
   it("returns best-effort UIA text if local capture is unavailable", async () => {
     const helper = {
       extractText: vi.fn(async () => ({ text: "Last visible message", truncated: true })),

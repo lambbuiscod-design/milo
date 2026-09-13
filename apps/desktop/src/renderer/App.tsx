@@ -749,6 +749,17 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                         ]}
                         onChange={(event) => void updateSettings({ closeBehavior: event.target.value as "hide" | "minimize" | "quit" })}
                       />
+                      <Select
+                        label="Recognition language"
+                        description="Sets which on-device OCR language Milo tries first. UI Automation remains the primary reader."
+                        value={snapshot.settings.language ?? "system"}
+                        options={[
+                          { value: "system", label: "Automatic (Windows)" },
+                          { value: "en", label: "English" },
+                          { value: "it", label: "Italiano" },
+                        ]}
+                        onChange={(event) => void updateSettings({ language: event.target.value as "system" | "en" | "it" })}
+                      />
                     </div>
                   )}
                   {settingsTab === "milo" && (

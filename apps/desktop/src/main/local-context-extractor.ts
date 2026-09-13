@@ -26,12 +26,14 @@ export async function extractLocalContext(
   helper: LocalExtractionHelper,
   identity: NativeWindowIdentity,
   maxChars = 6_000,
+  preferredOcrLanguage: "en" | "it" = "en",
 ): Promise<LocalContextSnapshot> {
   const uia = await helper.extractText(identity, maxChars);
   if (hasUsefulLocalText(uia.text)) return { ...uia, method: "uia", language: null };
 
   let bestOcr: (NativeTextSnapshot & { language: "en" | "it" }) | null = null;
-  for (const language of ["en", "it"] as const) {
+  const ocrLanguages = preferredOcrLanguage === "it" ? (["it", "en"] as const) : (["en", "it"] as const);
+  for (const language of ocrLanguages) {
     try {
       const ocr = await helper.captureText(identity, language, maxChars);
       if (bestOcr === null || ocr.text.length > bestOcr.text.length) bestOcr = { ...ocr, language };
