@@ -73,7 +73,11 @@ export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset: ext
     displayState === "playful" ||
     displayState === "looking" ||
     displayState === "dragging";
-  const eyes = displayState === "paused" || displayState === "sleeping" ? "paused" : isWide ? "wide" : "normal";
+  const eyes = displayState === "paused" || displayState === "sleeping"
+    ? "paused"
+    : appearance?.eyes === "curious"
+      ? "curious"
+      : isWide ? "wide" : "normal";
 
   return (
     <svg
@@ -142,15 +146,20 @@ export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset: ext
               transition: "transform 80ms ease-out",
             }}
           >
-            <ellipse cx="48" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
-            <ellipse cx="80" cy="57" rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : 7.5} />
+             <ellipse cx="48" cy={eyes === "curious" ? 58 : 57} rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : eyes === "curious" ? 6.5 : 7.5} />
+             <ellipse cx="80" cy={eyes === "curious" ? 58 : 57} rx={eyes === "wide" ? 6 : 5} ry={eyes === "wide" ? 8.5 : eyes === "curious" ? 6.5 : 7.5} />
             {/* Dual glints */}
             <circle cx="46.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
             <circle cx="50" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
             <circle cx="78.5" cy="54.5" r="1.8" fill="var(--cat-eye-glint)" />
             <circle cx="82" cy="58.5" r="0.9" fill="var(--cat-eye-glint)" />
-          </g>
-        </g>
+           </g>
+           {eyes === "curious" && (
+             <g fill="none" stroke="var(--cat-feature)" strokeLinecap="round" strokeWidth="2">
+               <path d="M41 48c4-2 8-2 12 0M75 48c4-2 8-2 12 0" />
+             </g>
+           )}
+         </g>
       )}
 
       {/* Subtle nose */}
@@ -177,9 +186,17 @@ export function MiloCat({ state, "aria-label": customAriaLabel, pupilOffset: ext
       />
 
       {/* Better whiskers: thinner, natural graceful arcs */}
-      <g fill="none" stroke="var(--cat-feature)" strokeLinecap="round" strokeWidth="1.5" opacity="0.68">
+       <g fill="none" stroke="var(--cat-feature)" strokeLinecap="round" strokeWidth="1.5" opacity="0.68">
         <path d="M43 68C37 67 30 67 23 69M43 73C37 74 30 77 24 81M85 68C91 67 98 67 105 69M85 73C91 74 98 77 104 81" />
-      </g>
+       </g>
+
+       {appearance?.accessories.head === "coral-bow" && (
+         <g className="milo-cat__accessory milo-cat__accessory--coral-bow" aria-hidden="true">
+           <path d="M62 25c-7-8-15-8-16-1-1 6 8 9 16 6Z" fill="var(--milo-coral, #FF8066)" stroke="var(--cat-outline)" strokeWidth="2" />
+           <path d="M66 25c7-8 15-8 16-1 1 6-8 9-16 6Z" fill="var(--milo-coral, #FF8066)" stroke="var(--cat-outline)" strokeWidth="2" />
+           <circle cx="64" cy="28" r="4" fill="var(--milo-peach, #FFAE8F)" stroke="var(--cat-outline)" strokeWidth="2" />
+         </g>
+       )}
 
       {/* Generating state: 3 subtle pulsing animated thinking dots cleanly inside viewBox 0 0 128 128 */}
       {displayState === "generating" && (

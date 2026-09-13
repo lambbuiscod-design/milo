@@ -111,7 +111,7 @@ const INITIAL_SNAPSHOT: DesktopSnapshot = {
       level: 1,
       firstMetAt: "2026-01-01T00:00:00.000Z",
       currentStreak: 0,
-      unlockedRewards: ["fur-charcoal", "animation-calm", "room-plant"],
+      unlockedRewards: ["fur-charcoal", "eyes-classic", "animation-calm", "room-plant"],
     },
     room: { background: "default", items: [] },
   },
@@ -1151,6 +1151,58 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                             <strong>{fur.charAt(0).toUpperCase() + fur.slice(1)}</strong>
                             {!isUnlocked && <small>Level {requiredLevel}</small>}
                           </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="settings-block">
+                  <h3 className="settings-block__title">Eyes</h3>
+                  <div className="tone-cards-grid">
+                    {(["classic", "curious"] as const).map((eyes) => {
+                      const rewardId = `eyes-${eyes}`;
+                      const requiredLevel = requiredLevelForReward(rewardId);
+                      const isUnlocked = unlockedRewards.has(rewardId);
+                      return (
+                        <button
+                          key={eyes}
+                          type="button"
+                          className={`tone-card ${appearance.eyes === eyes ? "tone-card--selected" : ""}`}
+                          disabled={!isUnlocked}
+                          aria-label={isUnlocked ? `${eyes} eyes` : `${eyes} eyes unlock at level ${requiredLevel}`}
+                          onClick={() => void updateSettings({ appearance: { ...appearance, eyes } })}
+                        >
+                          <span className={`customize-eye-preview customize-eye-preview--${eyes}`} aria-hidden="true"><i /><i /></span>
+                          <span className="tone-card__text"><strong>{eyes.charAt(0).toUpperCase() + eyes.slice(1)}</strong>{!isUnlocked && <small>Level {requiredLevel}</small>}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="settings-block">
+                  <h3 className="settings-block__title">Accessories</h3>
+                  <div className="tone-cards-grid">
+                    {(["none", "coral-bow"] as const).map((accessory) => {
+                      const rewardId = accessory === "none" ? null : `accessory-${accessory}`;
+                      const requiredLevel = rewardId ? requiredLevelForReward(rewardId) : null;
+                      const isUnlocked = rewardId === null || unlockedRewards.has(rewardId);
+                      const isSelected = accessory === "none" ? appearance.accessories.head === undefined : appearance.accessories.head === accessory;
+                      return (
+                        <button
+                          key={accessory}
+                          type="button"
+                          className={`tone-card ${isSelected ? "tone-card--selected" : ""}`}
+                          disabled={!isUnlocked}
+                          aria-label={isUnlocked ? accessory : `${accessory} unlocks at level ${requiredLevel}`}
+                          onClick={() => void updateSettings({
+                            appearance: {
+                              ...appearance,
+                              accessories: { ...appearance.accessories, head: accessory === "none" ? undefined : accessory },
+                            },
+                          })}
+                        >
+                          <span className={`customize-accessory-preview customize-accessory-preview--${accessory}`} aria-hidden="true" />
+                          <span className="tone-card__text"><strong>{accessory === "none" ? "None" : "Coral bow"}</strong>{!isUnlocked && <small>Level {requiredLevel}</small>}</span>
                         </button>
                       );
                     })}

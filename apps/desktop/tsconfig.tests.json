@@ -17,6 +17,7 @@
     "src/shared/**/*.ts",
     "src/renderer/components/**/*.ts",
     "src/renderer/components/**/*.tsx",
+    "src/renderer/MiloCat.tsx",
     "src/renderer/window.d.ts",
     "src/types/**/*.d.ts"
   ]

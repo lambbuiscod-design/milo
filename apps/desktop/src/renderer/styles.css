@@ -2613,6 +2613,69 @@ h1#panel-title {
   outline-offset: 2px;
 }
 
+.customize-eye-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 42px;
+}
+
+.customize-eye-preview i {
+  width: 12px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--cat-feature);
+  box-shadow: inset 3px 3px 0 -1px var(--cat-eye-glint);
+}
+
+.customize-eye-preview--curious i {
+  height: 12px;
+  transform: translateY(2px);
+}
+
+.customize-accessory-preview {
+  position: relative;
+  width: 42px;
+  height: 24px;
+}
+
+.customize-accessory-preview--none::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 11px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text-tertiary);
+}
+
+.customize-accessory-preview--coral-bow::before,
+.customize-accessory-preview--coral-bow::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  width: 20px;
+  height: 16px;
+  border-radius: 70% 30% 70% 30%;
+  background: var(--milo-coral);
+}
+
+.customize-accessory-preview--coral-bow::before { left: 2px; transform: rotate(8deg); }
+.customize-accessory-preview--coral-bow::after { right: 2px; transform: scaleX(-1) rotate(8deg); }
+
+.tone-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.tone-card__text small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
 /* ==========================================================================
    Milo V2 Form, Navigation & Feedback Primitives
    ========================================================================== */

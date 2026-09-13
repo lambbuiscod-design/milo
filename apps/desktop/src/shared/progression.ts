@@ -1,5 +1,6 @@
 export const PROGRESSION_REWARDS = Object.freeze([
   { id: "fur-charcoal", level: 1, label: "Charcoal fur" },
+  { id: "eyes-classic", level: 1, label: "Classic eyes" },
   { id: "animation-calm", level: 1, label: "Calm animation" },
   { id: "room-plant", level: 1, label: "Room plant" },
   { id: "fur-slate", level: 2, label: "Slate fur" },

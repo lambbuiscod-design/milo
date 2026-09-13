@@ -3,7 +3,7 @@ import { requiredLevelForReward, rewardsUnlockedThroughLevel } from "../src/shar
 
 describe("local progression rewards", () => {
   it("unlocks deterministic rewards by level", () => {
-    expect(rewardsUnlockedThroughLevel(1)).toEqual(["fur-charcoal", "animation-calm", "room-plant"]);
+    expect(rewardsUnlockedThroughLevel(1)).toEqual(["fur-charcoal", "eyes-classic", "animation-calm", "room-plant"]);
     expect(rewardsUnlockedThroughLevel(2)).toContain("fur-slate");
     expect(rewardsUnlockedThroughLevel(2)).not.toContain("room-lamp");
   });

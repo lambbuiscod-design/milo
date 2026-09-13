@@ -123,7 +123,9 @@ type PersistedSettings = z.infer<typeof persistedSettingsSchema>;
 function preserveEarnedAndSelectedRewards(settings: PersistedSettings): PersistedSettings {
   const selectedRewards = [
     `fur-${settings.appearance.fur}`,
+    `eyes-${settings.appearance.eyes}`,
     `animation-${settings.appearance.animationPersonality}`,
+    ...Object.values(settings.appearance.accessories).filter((value): value is string => value !== undefined).map((value) => `accessory-${value}`),
     ...settings.room.items.map((item) => `room-${item.id}`),
   ];
   return persistedSettingsSchema.parse({
@@ -208,7 +210,9 @@ export class ContentFreeSettingsStore {
     const unlocked = new Set(this.#settings.progress.unlockedRewards);
     const requestedRewards = [
       `fur-${catAppearance}`,
+      `eyes-${appearance.eyes}`,
       `animation-${appearance.animationPersonality}`,
+      ...Object.values(appearance.accessories).filter((value): value is string => value !== undefined).map((value) => `accessory-${value}`),
       ...(patch.room?.items ?? []).map((item) => `room-${item.id}`),
     ];
     if (requestedRewards.some((reward) => !unlocked.has(reward))) {
