@@ -65,7 +65,7 @@ describe("analytics authority boundaries", () => {
     expect(coach).toContain('surface: "analysis_limit"');
     expect(coach).toContain("keepalive: true");
     expect(coach.indexOf('fetch("/api/events"')).toBeLessThan(
-      coach.indexOf('window.location.assign("/account?upgrade=1")'),
+      coach.indexOf('router.push("/account?upgrade=1")'),
     );
   });
 

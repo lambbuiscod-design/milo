@@ -1,6 +1,6 @@
 # Milo Windows MVP status
 
-Last verified: 2026-08-30
+Last verified: 2026-09-13
 
 ## COMPLETE
 
@@ -18,11 +18,15 @@ Last verified: 2026-08-30
 - The deterministic offline `Milo.TestChat` fixture covers UIA, owner-drawn OCR, English/Italian samples, append, close, and recreation.
 - Node 24 lint, typecheck, all unit tests, production web/desktop builds, desktop security contracts, real UIA extraction, real English OCR, Electron shell runtime, packaging, 476-file artifact scan, and packaged launch have passed.
 - A fresh unsigned Windows installer and checksum exist under `apps/desktop/out/make/squirrel.windows/x64`.
+- The desktop now includes the approved premium home/workspace/settings/Room/customization UI, local progression and unlock enforcement, layered cat appearance, granular sound controls, and secure content-free local-data export/reset.
+- The canonical Git remote is configured and the verified work is pushed on `codex/milo-release`.
+- Next.js 16.3.3 and Sharp 0.35.4 resolve the current critical/high advisories; the production dependency audit reports no known vulnerabilities.
+- The complete local release verification passes on pinned Node 24.19.0, pnpm 10.34.5, and .NET SDK 10.0.302: frozen install, lint, typecheck, 610 unit tests, native protocol/fixture checks, web/desktop builds, 14 browser E2Es, Electron runtime smoke, Squirrel installer, 479-file artifact scan, ASAR tamper rejection, and production audit.
 
 ## PARTIAL
 
 - Windows-local Italian OCR is implemented and attempted after English, but this development PC does not have the Italian Windows OCR language pack, so a real Italian recognition smoke cannot pass here.
-- CI, database tests, and release workflows exist locally, but no remote Git repository or live CI run is configured.
+- CI, database tests, and release workflows exist locally and the remote repository is configured, but a clean remote GitHub Actions run and branch protection are not yet evidenced.
 - The combined Playwright picker-to-extraction smoke is implemented, but Electron's Playwright automation session exposes no interactive fixture window on this host. Native UIA/OCR and Electron shell paths pass independently.
 
 ## STILL REQUIRED FOR PRODUCTION
@@ -30,7 +34,7 @@ Last verified: 2026-08-30
 - Configure a real Supabase project, desktop OAuth client/redirect, AAL2/adult metadata, SMTP, Stripe, reviewed OpenRouter provider allowlist, rate-limit secret, and deploy the desktop quota migration.
 - Run real login, refresh/revocation, AI suggestion, quota, Checkout, webhook, Portal, cancellation, and renewal staging flows.
 - Install/ship the required Italian OCR capability or approve and validate a bundled local fallback.
-- Configure a Git remote and run Windows/web/database CI from a clean checkout.
+- Run Windows/web/database CI from a clean remote checkout and configure protected release-branch rules.
 - Obtain an Authenticode certificate, protect signing credentials, sign installer/update artifacts, and verify reputation/update channels.
 - Complete legal review, privacy/security review, Windows compatibility/DPI/multi-monitor testing, staged beta, and production deployment.
 
@@ -38,7 +42,7 @@ Last verified: 2026-08-30
 
 - External account configuration and secrets are not present locally. Secrets must be configured in local/server secret stores, never pasted into chat or bundled into Electron.
 - Production signing requires an Authenticode certificate and protected release environment.
-- Remote CI and updater publication require a configured Git repository/artifact host.
+- Remote CI needs repository Actions/branch-protection configuration; updater publication still requires an artifact host and signing setup.
 
 ## CURRENT ANSWER
 

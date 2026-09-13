@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
@@ -35,6 +36,7 @@ function factorDate(value: string) {
 }
 
 export function MfaSecurityPanel({ demoMode = false }: { demoMode?: boolean }) {
+  const router = useRouter();
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const [factors, setFactors] = useState<PublicTotpFactor[]>([]);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
@@ -155,7 +157,7 @@ export function MfaSecurityPanel({ demoMode = false }: { demoMode?: boolean }) {
       setEnrollment(null);
       setCode("");
       setCopied(false);
-      window.location.assign("/account?mfa=enabled");
+      router.push("/account?mfa=enabled");
     } catch {
       setCode("");
       setError("That code was not accepted. Wait for a new code and try again.");
@@ -185,7 +187,7 @@ export function MfaSecurityPanel({ demoMode = false }: { demoMode?: boolean }) {
       if (assuranceError || !assurance) throw assuranceError ?? new Error("AAL unavailable");
       if (assurance.currentLevel !== "aal2") {
         const destination = encodeURIComponent("/account?mfa=remove");
-        window.location.assign(`/mfa?next=${destination}`);
+        router.push(`/mfa?next=${destination}`);
         return;
       }
 
@@ -198,7 +200,7 @@ export function MfaSecurityPanel({ demoMode = false }: { demoMode?: boolean }) {
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) {
         await supabase.auth.signOut({ scope: "local" });
-        window.location.assign("/login");
+        router.push("/login");
         return;
       }
 
@@ -206,7 +208,7 @@ export function MfaSecurityPanel({ demoMode = false }: { demoMode?: boolean }) {
         remaining.length > 0
           ? `/mfa?next=${encodeURIComponent("/account?mfa=removed")}`
           : "/account?mfa=removed";
-      window.location.assign(destination);
+      router.push(destination);
     } catch {
       setError("Milo could not remove that authenticator. Verify again and retry.");
     } finally {

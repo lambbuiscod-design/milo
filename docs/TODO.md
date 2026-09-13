@@ -1,6 +1,6 @@
 # Milo Windows MVP TODO
 
-Last verified: 2026-08-30
+Last verified: 2026-09-13
 
 ## Completed locally
 
@@ -18,6 +18,10 @@ Last verified: 2026-08-30
 - [x] Add the offline synthetic UIA/OCR chat fixture and native/runtime smokes.
 - [x] Pass root lint, root typecheck, all unit tests, production builds, native contracts, security scan, real UIA, real English OCR, Electron shell, artifact scan, and packaged launch gates.
 - [x] Produce a fresh unsigned Windows installer and SHA-256 checksum.
+- [x] Add the premium desktop home/workspace/settings/Room/customization experience without weakening the compact companion flow.
+- [x] Persist bounded local XP, streaks, unlocks, layered appearance, accessible Room placement, granular sounds, and content-free export/reset.
+- [x] Configure and push the canonical Git repository branch (`codex/milo-release`).
+- [x] Patch Next.js and Sharp security advisories and pass a zero-known-vulnerability production audit.
 
 ## External integration and release
 
@@ -27,6 +31,6 @@ Last verified: 2026-08-30
 - [ ] Configure the reviewed OpenRouter provider allowlist and run a real structured suggestion/quota smoke without logging content.
 - [ ] Decide how Italian OCR is supplied on machines without the Italian Windows language pack; validate the chosen local-only path.
 - [ ] Run pgTAP, web Playwright, and the combined interactive desktop picker flow in a clean Windows CI/interactive environment.
-- [ ] Configure the Git remote and run all GitHub Actions gates from a clean checkout.
+- [ ] Run all GitHub Actions gates from a clean remote checkout and configure branch protection.
 - [ ] Add protected signing credentials, Authenticode-sign the app/installer/updater, and verify signatures and reputation.
 - [ ] Complete legal/privacy/security review, accessibility/DPI/multi-monitor compatibility, staging, updater channel, crash-reporting consent architecture, and beta rollout.

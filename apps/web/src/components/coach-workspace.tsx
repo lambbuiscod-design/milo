@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent } from "react";
 import {
   ArrowRight,
@@ -100,6 +101,7 @@ function formatFileSize(bytes: number) {
 }
 
 export function CoachWorkspace({ initialRemaining, demo = false }: { initialRemaining: number; demo?: boolean }) {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadButtonRef = useRef<HTMLButtonElement>(null);
   const analyzeButtonRef = useRef<HTMLButtonElement>(null);
@@ -242,7 +244,7 @@ export function CoachWorkspace({ initialRemaining, demo = false }: { initialRema
       }),
       keepalive: true,
     }).catch(() => undefined);
-    window.location.assign("/account?upgrade=1");
+    router.push("/account?upgrade=1");
   }
 
   async function analyze() {
@@ -297,7 +299,7 @@ export function CoachWorkspace({ initialRemaining, demo = false }: { initialRema
           openPaywall();
           return;
         }
-        if (payload.code === "MFA_REQUIRED") window.location.assign("/mfa?next=/dashboard");
+        if (payload.code === "MFA_REQUIRED") router.push("/mfa?next=/dashboard");
         throw new Error(payload.error ?? "Milo could not analyze that screenshot.");
       }
       shouldFocusResultsRef.current = true;
