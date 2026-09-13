@@ -15,6 +15,7 @@ import {
   parseContextPreview,
   parseContextPreviewInput,
   parseDesktopSnapshot,
+  parseDataExportResult,
   parseIpcResult,
   parseNudgePositionInput,
   parseNoPayload,
@@ -66,6 +67,8 @@ const api: MiloDesktopApi = Object.freeze({
   getSettings: () => invoke(IPC_CHANNELS.getSettings, undefined, parsePublicSettings),
   updateSettings: (input) =>
     invoke(IPC_CHANNELS.updateSettings, parseSettingsPatch(input), parsePublicSettings),
+  exportLocalData: () => invoke(IPC_CHANNELS.exportLocalData, undefined, parseDataExportResult),
+  resetLocalData: () => invoke(IPC_CHANNELS.resetLocalData, undefined, parsePublicSettings),
   openAccount: (destination) =>
     invoke(
       IPC_CHANNELS.openAccount,

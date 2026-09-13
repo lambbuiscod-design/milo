@@ -78,6 +78,8 @@ describe("Electron renderer security policy", () => {
       "copyReply",
       "getSettings",
       "updateSettings",
+      "exportLocalData",
+      "resetLocalData",
       "openAccount",
       "signIn",
       "signOut",

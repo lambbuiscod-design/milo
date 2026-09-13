@@ -241,6 +241,28 @@ export class ContentFreeSettingsStore {
     return this.getPublicSettings();
   }
 
+  getContentFreeExport(): Readonly<{ format: "milo-local-data"; version: 1; settings: PublicSettings }> {
+    return {
+      format: "milo-local-data",
+      version: 1,
+      settings: this.getPublicSettings(),
+    };
+  }
+
+  resetLocalData(): PublicSettings {
+    this.#settings = persistedSettingsSchema.parse({
+      ...DEFAULT_SETTINGS,
+      progress: {
+        ...DEFAULT_SETTINGS.progress,
+        firstMetAt: this.#now().toISOString(),
+        unlockedRewards: [...DEFAULT_SETTINGS.progress.unlockedRewards],
+      },
+      overlayPositions: {},
+    });
+    this.#write();
+    return this.getPublicSettings();
+  }
+
   getPaused(): boolean {
     return this.#settings.paused;
   }

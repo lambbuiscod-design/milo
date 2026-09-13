@@ -57,6 +57,7 @@ export type PublicSettings = Readonly<{
 }>;
 
 export type PublicSettingsPatch = Partial<Omit<PublicSettings, "progress">>;
+export type DataExportResult = Readonly<{ status: "saved" | "cancelled" }>;
 
 export type SyntheticSuggestion = Readonly<{
   id: SuggestionId;
@@ -311,6 +312,8 @@ export type MiloDesktopApi = Readonly<{
   copyReply(input: CopyReplyInput): Promise<void>;
   getSettings(): Promise<PublicSettings>;
   updateSettings(input: PublicSettingsPatch): Promise<PublicSettings>;
+  exportLocalData(): Promise<DataExportResult>;
+  resetLocalData(): Promise<PublicSettings>;
   openAccount(destination: AccountDestination): Promise<void>;
   signIn(): Promise<AuthSummary>;
   signOut(): Promise<AuthSummary>;
@@ -334,6 +337,8 @@ export const IPC_CHANNELS = {
   copyReply: "milo:copy-reply",
   getSettings: "milo:get-settings",
   updateSettings: "milo:update-settings",
+  exportLocalData: "milo:export-local-data",
+  resetLocalData: "milo:reset-local-data",
   openAccount: "milo:open-account",
   signIn: "milo:sign-in",
   signOut: "milo:sign-out",
@@ -357,6 +362,8 @@ export const PRELOAD_METHOD_ALLOWLIST = [
   "copyReply",
   "getSettings",
   "updateSettings",
+  "exportLocalData",
+  "resetLocalData",
   "openAccount",
   "signIn",
   "signOut",

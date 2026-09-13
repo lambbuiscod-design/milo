@@ -3,6 +3,7 @@ import {
   app,
   clipboard,
   desktopCapturer,
+  dialog,
   globalShortcut,
   ipcMain,
   screen,
@@ -10,6 +11,7 @@ import {
   type IpcMainInvokeEvent,
   type MenuItemConstructorOptions,
 } from "electron";
+import { writeFile } from "node:fs/promises";
 import {
   HARMLESS_ANIMATIONS,
   IPC_CHANNELS,
@@ -673,6 +675,40 @@ export function registerDesktopIpc({
       if (position) companionWindow.setPosition(position.x, position.y, false);
     }
     const updated = settingsStore.updatePublicSettings(patch);
+    publish();
+    return updated;
+  });
+  handle(IPC_CHANNELS.exportLocalData, async (payload) => {
+    parseNoPayload(payload);
+    const result = await dialog.showSaveDialog(window, {
+      title: "Export Milo local data",
+      defaultPath: "milo-local-data.json",
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      properties: ["createDirectory", "showOverwriteConfirmation"],
+    });
+    if (result.canceled || !result.filePath) return { status: "cancelled" as const };
+    const serialized = `${JSON.stringify(settingsStore.getContentFreeExport(), null, 2)}\n`;
+    await writeFile(result.filePath, serialized, { encoding: "utf8", mode: 0o600 });
+    return { status: "saved" as const };
+  });
+  handle(IPC_CHANNELS.resetLocalData, (payload) => {
+    parseNoPayload(payload);
+    const updated = settingsStore.resetLocalData();
+    state = "idle";
+    replies = [];
+    lastAction = "none";
+    clearContextPreview();
+    contextChangeDetector.clear();
+    app.setLoginItemSettings({ openAtLogin: updated.launchAtLogin ?? false });
+    if (!window.isDestroyed()) {
+      window.setOpacity(updated.opacity ?? 1);
+      window.setAlwaysOnTop(updated.isPinned ?? true);
+    }
+    if (companionWindow && !companionWindow.isDestroyed()) {
+      companionWindow.setOpacity(updated.opacity ?? 1);
+      companionWindow.setAlwaysOnTop(updated.isPinned ?? true);
+    }
+    overlay.reset();
     publish();
     return updated;
   });

@@ -9,6 +9,7 @@ export const repositoryRoot = path.resolve(scriptDirectory, "..");
 export const expectedPreloadMethods = Object.freeze([
   "askMilo",
   "copyReply",
+  "exportLocalData",
   "getSettings",
   "getSnapshot",
   "nudgePosition",
@@ -20,6 +21,7 @@ export const expectedPreloadMethods = Object.freeze([
   "previewContext",
   "previewState",
   "quit",
+  "resetLocalData",
   "resetPosition",
   "selectWindow",
   "setPanelOpen",

@@ -148,4 +148,24 @@ describe("ContentFreeSettingsStore progression migration and limits", () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("exports only content-free data and resets local preferences", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const path = await import("node:path");
+    const { ContentFreeSettingsStore } = await import("../src/main/settings-store");
+    const tempDir = mkdtempSync(path.join(tmpdir(), "milo-settings-data-"));
+    try {
+      const store = new ContentFreeSettingsStore(tempDir);
+      store.updatePublicSettings({ theme: "dark", soundVolume: 0.2 });
+      const exported = JSON.stringify(store.getContentFreeExport());
+      expect(exported).toContain('"format":"milo-local-data"');
+      for (const forbidden of ["transcript", "windowTitle", "participant", "clipboard", "refreshToken"]) {
+        expect(exported).not.toContain(forbidden);
+      }
+      expect(store.resetLocalData()).toMatchObject({ theme: "system", soundVolume: 0.7, catAppearance: "charcoal" });
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

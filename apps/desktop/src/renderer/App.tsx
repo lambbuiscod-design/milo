@@ -44,6 +44,7 @@ import { MiloCat } from "./MiloCat";
 import { sound } from "./audio";
 import {
   ProgressBar,
+  Modal,
   SegmentedControl,
   Select,
   SidebarItem,
@@ -251,6 +252,8 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
   const [contextPreview, setContextPreview] = useState<ContextPreview | null>(null);
   const [contextPreviewInput, setContextPreviewInput] = useState<ContextPreviewInput>(DEFAULT_CONTEXT_PREVIEW_INPUT);
   const [contextPreviewBusy, setContextPreviewBusy] = useState(false);
+  const [dataBusy, setDataBusy] = useState(false);
+  const [resetDataOpen, setResetDataOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const catButtonRef = useRef<HTMLButtonElement>(null);
   const panelWasOpenRef = useRef(false);
@@ -908,13 +911,57 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                     <div className="settings-block">
                       <h3 className="settings-block__title">Data</h3>
                       <p className="settings-desc">Milo stores only content-free preferences and local companion progress. Conversation content is not included.</p>
-                      <p className="settings-desc">Export and destructive reset controls stay hidden until their reviewed main-process handlers are available.</p>
+                      <div className="settings-actions">
+                        <button
+                          className="button button--secondary button--sm"
+                          type="button"
+                          disabled={dataBusy}
+                          onClick={() => {
+                            setDataBusy(true);
+                            void window.milo.exportLocalData()
+                              .then((result) => setAnnouncement(result.status === "saved" ? "Milo local data exported." : "Export cancelled."))
+                              .catch(() => setAnnouncement("Milo could not export local data."))
+                              .finally(() => setDataBusy(false));
+                          }}
+                        >
+                          Export local data
+                        </button>
+                        <button className="button button--danger button--sm" type="button" disabled={dataBusy} onClick={() => setResetDataOpen(true)}>
+                          Reset local data
+                        </button>
+                      </div>
+                      <p className="settings-desc">Exports never include screenshots, conversation text, participant names, replies, tokens, or clipboard content.</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
           ) : null}
+
+          <Modal open={resetDataOpen} title="Reset Milo local data?" onClose={() => setResetDataOpen(false)}>
+            <p>This resets Milo&apos;s preferences, appearance, room, XP, and local position. Your sign-in remains active, and no conversation content is stored.</p>
+            <div className="settings-actions">
+              <button className="button button--secondary" type="button" disabled={dataBusy} onClick={() => setResetDataOpen(false)}>Cancel</button>
+              <button
+                className="button button--danger"
+                type="button"
+                disabled={dataBusy}
+                onClick={() => {
+                  setDataBusy(true);
+                  void window.milo.resetLocalData()
+                    .then((settings) => {
+                      setSnapshot((current) => ({ ...current, settings, state: "idle", replies: [], lastAction: "none" }));
+                      setResetDataOpen(false);
+                      setAnnouncement("Milo local data was reset.");
+                    })
+                    .catch(() => setAnnouncement("Milo could not reset local data."))
+                    .finally(() => setDataBusy(false));
+                }}
+              >
+                Reset local data
+              </button>
+            </div>
+          </Modal>
 
           {appViewState === "workspace" && (
             <div className="desktop-layout">

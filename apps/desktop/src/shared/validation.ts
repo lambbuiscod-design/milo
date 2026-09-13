@@ -13,6 +13,7 @@ import {
   CONTEXT_PREVIEW_MESSAGE_LIMITS,
   type CopyReplyInput,
   type DesktopSnapshot,
+  type DataExportResult,
   type IpcResult,
   type NudgePositionInput,
   type PreviewAction,
@@ -225,6 +226,7 @@ const ipcResultSchema = z.union([
   z.object({ ok: z.literal(true), value: z.unknown() }).strict(),
   z.object({ ok: z.literal(false), error: ipcErrorSchema }).strict(),
 ]);
+const dataExportResultSchema = z.object({ status: z.enum(["saved", "cancelled"]) }).strict();
 
 export class RequestValidationError extends Error {
   constructor() {
@@ -262,6 +264,10 @@ export function parseBoolean(value: unknown): boolean {
 
 export function parseNoPayload(value: unknown): undefined {
   return parse(z.undefined(), value);
+}
+
+export function parseDataExportResult(value: unknown): DataExportResult {
+  return parse(dataExportResultSchema, value);
 }
 
 export function parseAskMiloInput(value: unknown): AskMiloInput {
