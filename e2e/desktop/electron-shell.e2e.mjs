@@ -44,14 +44,28 @@ try {
   });
 
   electronApp.on("window", observePage);
-  const page = await electronApp.firstWindow({ timeout: 30_000 });
+  const firstPage = await electronApp.firstWindow({ timeout: 30_000 });
+  observePage(firstPage);
+  const pageDeadline = Date.now() + 30_000;
+  let page;
+  while (!page && Date.now() < pageDeadline) {
+    for (const candidate of electronApp.windows()) {
+      await candidate.waitForLoadState("domcontentloaded").catch(() => undefined);
+      if (candidate.url() === "milo://app/index.html") {
+        page = candidate;
+        break;
+      }
+    }
+    if (!page) await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  if (!page) throw new Error("MILO_WORKSPACE_WINDOW_MISSING");
   observePage(page);
   await page.waitForLoadState("domcontentloaded");
 
   assert.equal(page.url(), "milo://app/index.html");
 
   const liveWindow = await electronApp.evaluate(async ({ BrowserWindow, session }) => {
-    const [window] = BrowserWindow.getAllWindows();
+    const window = BrowserWindow.getAllWindows().find((candidate) => candidate.webContents.getURL() === "milo://app/index.html");
     if (!window) throw new Error("MILO_WINDOW_MISSING");
     const preferences = window.webContents.getLastWebPreferences();
     window.webContents.openDevTools({ mode: "detach" });
@@ -110,6 +124,7 @@ try {
   await page.waitForFunction(
     () => document.activeElement?.getAttribute("aria-label") === "Collapse Milo panel",
   );
+  await page.getByRole("button", { name: "Open Desktop Milo" }).click();
 
   await page.getByRole("button", { name: "Pause", exact: true }).first().click();
   await page.getByText("Milo paused", { exact: true }).waitFor();
