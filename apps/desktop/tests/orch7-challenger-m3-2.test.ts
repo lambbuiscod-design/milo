@@ -13,8 +13,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  calculateCenteredPosition,
-  DEFAULT_COMPANION_SIZE,
 } from "../src/shared/companion-bounds";
 import type { Rectangle } from "../src/shared/position";
 import {

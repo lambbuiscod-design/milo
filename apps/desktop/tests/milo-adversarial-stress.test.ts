@@ -3,10 +3,8 @@ import { MiloStateMachine } from "../src/main/milo-core/state-machine";
 import { EventBus } from "../src/main/milo-core/event-bus";
 import {
   CHARACTER_STATES,
-  type CharacterState,
   type MiloStateEvent,
   STATE_PRIORITIES,
-  STATE_DURATIONS,
 } from "../src/main/milo-core/types";
 
 // Deterministic Pseudo-Random Number Generator (Mulberry32)
@@ -344,7 +342,7 @@ describe("MiloStateMachine & EventBus Adversarial Stress Suite (Challenger)", ()
 
     it("fails closed on completely unrecognized or malicious event names", () => {
       const eventBus = new EventBus();
-      const rejections: Array<{ event: any; reason: string }> = [];
+      const rejections: Array<{ event: MiloStateEvent; reason: string }> = [];
       eventBus.subscribe("state:transition_rejected", (data) => {
         rejections.push({ event: data.event, reason: data.reason });
       });
@@ -357,14 +355,14 @@ describe("MiloStateMachine & EventBus Adversarial Stress Suite (Challenger)", ()
         "EAT_FISH",
         "",
         " ",
-        null as any,
-        undefined as any,
-        12345 as any,
-        {} as any,
+        null,
+        undefined,
+        12345,
+        {},
       ];
 
       for (const bad of badEvents) {
-        const result = sm.transition(bad);
+        const result = sm.transition(bad as MiloStateEvent);
         expect(result).toBe(false);
         expect(sm.currentState).toBe("idle");
       }
@@ -580,7 +578,7 @@ describe("MiloStateMachine & EventBus Adversarial Stress Suite (Challenger)", ()
   // =========================================================================
   describe("Hostile Boundary Conditions & Edge Cases", () => {
     it("handles non-Error thrown objects in EventBus handlers without breaking loop", () => {
-      const captured: any[] = [];
+      const captured: unknown[] = [];
       const bus = new EventBus({
         onError: (err) => {
           captured.push(err);
@@ -691,4 +689,3 @@ describe("MiloStateMachine & EventBus Adversarial Stress Suite (Challenger)", ()
     });
   });
 });
-

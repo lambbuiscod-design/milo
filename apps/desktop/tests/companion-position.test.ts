@@ -3,8 +3,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  DEFAULT_COMPANION_SIZE,
-  MIN_COMPANION_PEEK_PX,
   calculateCenteredPosition,
   calculateCompanionBounds,
   clampWithEdgePeeking,

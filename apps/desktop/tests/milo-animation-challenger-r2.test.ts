@@ -2,9 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MiloStateMachine } from "../src/main/milo-core/state-machine";
 import { AnimationManager } from "../src/main/milo-core/animation-manager";
 import { EventBus } from "../src/main/milo-core/event-bus";
+import type { MiloEventMap } from "../src/main/milo-core/event-bus";
 import {
-  STATE_PRIORITIES,
-  STATE_DURATIONS,
   type CharacterState,
 } from "../src/main/milo-core/types";
 
@@ -240,8 +239,8 @@ describe("AnimationManager Challenger R2 Comprehensive Test Suite", () => {
   describe("Task 4: Non-interruptible preemption protection", () => {
     it("strictly blocks preemption when active animation has interruptible: false", () => {
       const eventBus = new EventBus();
-      const rejectedEvents: any[] = [];
-      const interruptedEvents: any[] = [];
+      const rejectedEvents: MiloEventMap["animation:rejected"][] = [];
+      const interruptedEvents: MiloEventMap["animation:interrupted"][] = [];
       eventBus.subscribe("animation:rejected", (e) => rejectedEvents.push(e));
       eventBus.subscribe("animation:interrupted", (e) => interruptedEvents.push(e));
 

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MiloStateMachine } from "../src/main/milo-core/state-machine";
 import { EventBus } from "../src/main/milo-core/event-bus";
-import { resolveMiloState, STATE_PRIORITIES, STATE_DURATIONS } from "../src/main/milo-core/types";
+import { resolveMiloState, STATE_DURATIONS } from "../src/main/milo-core/types";
 
 describe("MiloStateMachine (Milestone 2 Requirement R1)", () => {
   beforeEach(() => {

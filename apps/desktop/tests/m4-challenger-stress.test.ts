@@ -8,7 +8,6 @@ import {
   DOUBLE_CLICK_COOLDOWN_MS,
   DRAG_DISTANCE_THRESHOLD,
   HOLD_DURATION_THRESHOLD_MS,
-  HARMLESS_ANIMATION_NAMES,
 } from "../src/shared/contracts";
 
 /**

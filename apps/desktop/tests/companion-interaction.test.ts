@@ -4,14 +4,11 @@ import {
   calculatePupilOffset,
   HARMLESS_ANIMATION_NAMES,
   CLICK_DELAY_MS,
-  DOUBLE_CLICK_COOLDOWN_MS,
   MAX_PUPIL_OFFSET_X,
   MAX_PUPIL_OFFSET_Y,
   HARMLESS_ANIMATIONS,
-  type TriggerCharacterActionInput,
 } from "../src/shared/contracts";
 import {
-  triggerCharacterActionInputSchema,
   parseTriggerCharacterActionInput,
   RequestValidationError,
 } from "../src/shared/validation";
@@ -359,26 +356,26 @@ describe("Milestone 4: Companion Window Interaction Layer", () => {
       ]);
 
       // Item 1: Open Milo
-      template[0].click?.({} as any, mockCompanionWindow, {} as any);
+      template[0].click?.({} as never, mockCompanionWindow, {} as never);
       expect(mockOverlay.setPanelOpen).toHaveBeenCalledWith(true);
       expect(mockWindow.showInactive).toHaveBeenCalledTimes(1);
       expect(publish).toHaveBeenCalledTimes(1);
 
       // Item 2: Milo Room
-      template[1].click?.({} as any, mockCompanionWindow, {} as any);
+      template[1].click?.({} as never, mockCompanionWindow, {} as never);
       expect(mockOverlay.setPanelOpen).toHaveBeenCalledWith(true);
       expect(mockWindow.showInactive).toHaveBeenCalledTimes(2);
 
       // Item 3: Customize
-      template[2].click?.({} as any, mockCompanionWindow, {} as any);
+      template[2].click?.({} as never, mockCompanionWindow, {} as never);
       expect(mockOverlay.setPanelOpen).toHaveBeenCalledWith(true);
 
       // Item 4: Settings
-      template[3].click?.({} as any, mockCompanionWindow, {} as any);
+      template[3].click?.({} as never, mockCompanionWindow, {} as never);
       expect(mockOverlay.setPanelOpen).toHaveBeenCalledWith(true);
 
       // Item 5: Hide Milo
-      template[4].click?.({} as any, mockCompanionWindow, {} as any);
+      template[4].click?.({} as never, mockCompanionWindow, {} as never);
       expect(mockCompanionWindow.hide).toHaveBeenCalledTimes(1);
     });
   });

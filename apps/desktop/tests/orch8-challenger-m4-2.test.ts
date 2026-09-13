@@ -2,8 +2,6 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   CHARACTER_STATES,
   type CharacterState,
-  type TriggerCharacterActionInput,
-  HARMLESS_ANIMATIONS,
 } from "../src/shared/contracts";
 import {
   type Point,
@@ -26,7 +24,6 @@ import {
   AnimationManager,
   EventBus,
   STATE_PRIORITIES,
-  STATE_DURATIONS,
   type MiloStateEvent,
 } from "../src/main/milo-core";
 

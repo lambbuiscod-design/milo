@@ -3,8 +3,6 @@ import { MiloStateMachine } from "../src/main/milo-core/state-machine";
 import { AnimationManager } from "../src/main/milo-core/animation-manager";
 import { EventBus } from "../src/main/milo-core/event-bus";
 import {
-  STATE_PRIORITIES,
-  STATE_DURATIONS,
   type CharacterState,
 } from "../src/main/milo-core/types";
 

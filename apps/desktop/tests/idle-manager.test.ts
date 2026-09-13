@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { IdleManager, IDLE_BEHAVIORS } from "../src/main/idle-manager";
+import { IdleManager } from "../src/main/idle-manager";
 import { MiloStateMachine, EventBus, AnimationManager } from "../src/main/milo-core";
 
 describe("IdleManager", () => {
