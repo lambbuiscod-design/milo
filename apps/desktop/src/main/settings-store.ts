@@ -113,9 +113,16 @@ const xpPolicySchema = z
   })
   .strict();
 
-const persistedSettingsSchema = persistedSettingsV1Schema.extend({
+const persistedSettingsV2Schema = persistedSettingsV1Schema.extend({
   version: z.literal(2),
   xpPolicy: xpPolicySchema.default({ lastAwardAt: 0, awardDay: null, dailyEarned: 0 }),
+}).strict();
+
+const persistedSettingsSchema = persistedSettingsV2Schema.extend({
+  version: z.literal(3),
+  uiSoundEnabled: z.boolean().default(true),
+  miloSoundEnabled: z.boolean().default(true),
+  activitySoundEnabled: z.boolean().default(false),
 }).strict();
 
 type PersistedSettings = z.infer<typeof persistedSettingsSchema>;
@@ -144,13 +151,16 @@ function preserveEarnedAndSelectedRewards(settings: PersistedSettings): Persiste
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = Object.freeze({
-  version: 2,
+  version: 3,
   theme: "system",
   motion: "system",
   showWatchingIndicator: true,
   soundEnabled: true,
   soundVolume: 0.7,
   noticeSoundEnabled: false,
+  uiSoundEnabled: true,
+  miloSoundEnabled: true,
+  activitySoundEnabled: false,
   activeTone: "standard",
   opacity: 1.0,
   isPinned: true,
@@ -189,6 +199,9 @@ export class ContentFreeSettingsStore {
       soundEnabled: this.#settings.soundEnabled,
       soundVolume: this.#settings.soundVolume,
       noticeSoundEnabled: this.#settings.noticeSoundEnabled,
+      uiSoundEnabled: this.#settings.uiSoundEnabled,
+      miloSoundEnabled: this.#settings.miloSoundEnabled,
+      activitySoundEnabled: this.#settings.activitySoundEnabled,
       activeTone: this.#settings.activeTone,
       opacity: this.#settings.opacity,
       isPinned: this.#settings.isPinned,
@@ -318,13 +331,29 @@ export class ContentFreeSettingsStore {
       const parsed: unknown = JSON.parse(readFileSync(this.#filePath, "utf8"));
       const current = persistedSettingsSchema.safeParse(parsed);
       if (current.success) return preserveEarnedAndSelectedRewards(current.data);
+      const previous = persistedSettingsV2Schema.safeParse(parsed);
+      if (previous.success) {
+        const migrated = persistedSettingsSchema.parse({
+          ...previous.data,
+          version: 3,
+          uiSoundEnabled: previous.data.soundEnabled,
+          miloSoundEnabled: previous.data.soundEnabled,
+          activitySoundEnabled: previous.data.noticeSoundEnabled,
+        });
+        this.#settings = preserveEarnedAndSelectedRewards(migrated);
+        this.#write();
+        return this.#settings;
+      }
       const legacy = persistedSettingsV1Schema.safeParse(parsed);
       if (legacy.success) {
         const migrated = persistedSettingsSchema.parse({
           ...legacy.data,
-          version: 2,
+          version: 3,
           appearance: { ...legacy.data.appearance, fur: legacy.data.catAppearance },
           xpPolicy: { lastAwardAt: 0, awardDay: null, dailyEarned: 0 },
+          uiSoundEnabled: legacy.data.soundEnabled,
+          miloSoundEnabled: legacy.data.soundEnabled,
+          activitySoundEnabled: legacy.data.noticeSoundEnabled,
         });
         this.#settings = preserveEarnedAndSelectedRewards(migrated);
         this.#write();
@@ -368,6 +397,6 @@ export class ContentFreeSettingsStore {
 }
 
 export function isContentFreeSettings(value: unknown): boolean {
-  return persistedSettingsSchema.safeParse(value).success || persistedSettingsV1Schema.safeParse(value).success;
+  return persistedSettingsSchema.safeParse(value).success || persistedSettingsV2Schema.safeParse(value).success || persistedSettingsV1Schema.safeParse(value).success;
 }
 

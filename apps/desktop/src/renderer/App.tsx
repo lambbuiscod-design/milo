@@ -96,6 +96,9 @@ const INITIAL_SNAPSHOT: DesktopSnapshot = {
     soundEnabled: true,
     soundVolume: 0.7,
     noticeSoundEnabled: false,
+    uiSoundEnabled: true,
+    miloSoundEnabled: true,
+    activitySoundEnabled: false,
     activeTone: "standard",
     opacity: 1.0,
     isPinned: true,
@@ -326,12 +329,14 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
   }, [snapshot.settings.appearance?.fur, snapshot.settings.catAppearance]);
 
   useEffect(() => {
-    sound.setConfig(
-      snapshot.settings.soundEnabled ?? true,
-      snapshot.settings.soundVolume ?? 0.7,
-      snapshot.settings.noticeSoundEnabled ?? false,
-    );
-  }, [snapshot.settings.noticeSoundEnabled, snapshot.settings.soundEnabled, snapshot.settings.soundVolume]);
+    sound.setConfig({
+      enabled: snapshot.settings.soundEnabled ?? true,
+      volume: snapshot.settings.soundVolume ?? 0.7,
+      uiEnabled: snapshot.settings.uiSoundEnabled ?? true,
+      miloEnabled: snapshot.settings.miloSoundEnabled ?? true,
+      activityEnabled: snapshot.settings.activitySoundEnabled ?? snapshot.settings.noticeSoundEnabled ?? false,
+    });
+  }, [snapshot.settings.activitySoundEnabled, snapshot.settings.miloSoundEnabled, snapshot.settings.noticeSoundEnabled, snapshot.settings.soundEnabled, snapshot.settings.soundVolume, snapshot.settings.uiSoundEnabled]);
 
   const previousStateRef = useRef<DesktopState>(snapshot.state);
   useEffect(() => {
@@ -766,20 +771,33 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                     <div className="settings-block">
                       <h3 className="settings-block__title">Sound Feedback</h3>
                       <Toggle
-                        label="Interface sounds"
+                        label="All sounds"
                         checked={snapshot.settings.soundEnabled ?? true}
                         onChange={(event) => {
                           const enabled = event.target.checked;
-                          if (enabled) sound.playClick();
                           void updateSettings({ soundEnabled: enabled });
                         }}
                       />
                       <Toggle
-                        label="New activity sound"
-                        description="Off by default so Milo stays unobtrusive."
-                        checked={snapshot.settings.noticeSoundEnabled ?? false}
+                        label="Interface sounds"
+                        description="Subtle feedback for buttons and copying."
+                        checked={snapshot.settings.uiSoundEnabled ?? true}
                         disabled={!(snapshot.settings.soundEnabled ?? true)}
-                        onChange={(event) => void updateSettings({ noticeSoundEnabled: event.target.checked })}
+                        onChange={(event) => void updateSettings({ uiSoundEnabled: event.target.checked })}
+                      />
+                      <Toggle
+                        label="Milo sounds"
+                        description="Chimes when suggestions are ready."
+                        checked={snapshot.settings.miloSoundEnabled ?? true}
+                        disabled={!(snapshot.settings.soundEnabled ?? true)}
+                        onChange={(event) => void updateSettings({ miloSoundEnabled: event.target.checked })}
+                      />
+                      <Toggle
+                        label="New activity sounds"
+                        description="Off by default so Milo stays unobtrusive."
+                        checked={snapshot.settings.activitySoundEnabled ?? snapshot.settings.noticeSoundEnabled ?? false}
+                        disabled={!(snapshot.settings.soundEnabled ?? true)}
+                        onChange={(event) => void updateSettings({ activitySoundEnabled: event.target.checked, noticeSoundEnabled: event.target.checked })}
                       />
                       <Slider
                         label="Volume"
@@ -791,9 +809,11 @@ export function App({ initialSnapshot = INITIAL_SNAPSHOT }: { initialSnapshot?: 
                         disabled={!(snapshot.settings.soundEnabled ?? true)}
                         onChange={(event) => void updateSettings({ soundVolume: Number(event.target.value) })}
                       />
-                      <button className="button button--secondary button--sm" type="button" disabled={!(snapshot.settings.soundEnabled ?? true)} onClick={() => sound.playPurr()}>
-                        Preview sound
-                      </button>
+                      <div className="settings-actions" aria-label="Sound previews">
+                        <button className="button button--secondary button--sm" type="button" disabled={!(snapshot.settings.soundEnabled ?? true) || !(snapshot.settings.uiSoundEnabled ?? true)} onClick={() => sound.playClick()}>Preview interface</button>
+                        <button className="button button--secondary button--sm" type="button" disabled={!(snapshot.settings.soundEnabled ?? true) || !(snapshot.settings.miloSoundEnabled ?? true)} onClick={() => sound.playPurr()}>Preview Milo</button>
+                        <button className="button button--secondary button--sm" type="button" disabled={!(snapshot.settings.soundEnabled ?? true) || !(snapshot.settings.activitySoundEnabled ?? snapshot.settings.noticeSoundEnabled ?? false)} onClick={() => sound.playNotice()}>Preview activity</button>
+                      </div>
                     </div>
                   )}
                   {settingsTab === "display" && (

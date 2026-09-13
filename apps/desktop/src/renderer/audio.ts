@@ -3,11 +3,23 @@
  * Zero external audio dependencies - works offline using browser AudioContext oscillators.
  */
 
-class MiloAudioEngine {
+export type MiloSoundCategory = "ui" | "milo" | "activity";
+
+export type MiloAudioConfig = Readonly<{
+  enabled: boolean;
+  volume: number;
+  uiEnabled: boolean;
+  miloEnabled: boolean;
+  activityEnabled: boolean;
+}>;
+
+export class MiloAudioEngine {
   private ctx: AudioContext | null = null;
   private enabled: boolean = true;
   private volume: number = 0.7;
   private noticeEnabled: boolean = false;
+  private uiEnabled: boolean = true;
+  private miloEnabled: boolean = true;
 
   private getContext(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -23,17 +35,19 @@ class MiloAudioEngine {
     return this.ctx;
   }
 
-  public setConfig(enabled = true, volume = 0.7, noticeEnabled = false) {
-    this.enabled = enabled;
-    this.volume = Math.max(0, Math.min(1, volume));
-    this.noticeEnabled = noticeEnabled;
+  public setConfig(config: MiloAudioConfig) {
+    this.enabled = config.enabled;
+    this.volume = Math.max(0, Math.min(1, config.volume));
+    this.uiEnabled = config.uiEnabled;
+    this.miloEnabled = config.miloEnabled;
+    this.noticeEnabled = config.activityEnabled;
   }
 
   /**
    * Playful bubble pop sound on copy action
    */
   public playPop() {
-    if (!this.enabled || this.volume <= 0) return;
+    if (!this.enabled || !this.uiEnabled || this.volume <= 0) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
@@ -63,7 +77,7 @@ class MiloAudioEngine {
    * Soft cute purr / double chime when suggestions are ready
    */
   public playPurr() {
-    if (!this.enabled || this.volume <= 0) return;
+    if (!this.enabled || !this.miloEnabled || this.volume <= 0) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
@@ -127,7 +141,7 @@ class MiloAudioEngine {
    * Soft UI click
    */
   public playClick() {
-    if (!this.enabled || this.volume <= 0) return;
+    if (!this.enabled || !this.uiEnabled || this.volume <= 0) return;
     const ctx = this.getContext();
     if (!ctx) return;
 

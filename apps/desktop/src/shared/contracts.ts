@@ -39,6 +39,9 @@ export type PublicSettings = Readonly<{
   soundEnabled?: boolean;
   soundVolume?: number;
   noticeSoundEnabled?: boolean;
+  uiSoundEnabled?: boolean;
+  miloSoundEnabled?: boolean;
+  activitySoundEnabled?: boolean;
   activeTone?: ToneProfile;
   opacity?: number;
   isPinned?: boolean;

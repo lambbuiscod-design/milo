@@ -74,7 +74,7 @@ describe("ContentFreeSettingsStore catAppearance persistence", () => {
 });
 
 describe("ContentFreeSettingsStore progression migration and limits", () => {
-  it("migrates legacy content-free settings to version 2 without losing preferences", async () => {
+  it("migrates legacy content-free settings to version 3 without losing preferences", async () => {
     const { mkdtempSync, readFileSync, rmSync, writeFileSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const path = await import("node:path");
@@ -85,7 +85,12 @@ describe("ContentFreeSettingsStore progression migration and limits", () => {
       const store = new ContentFreeSettingsStore(tempDir);
       expect(store.getPublicSettings().motion).toBe("reduced");
       const migrated = JSON.parse(readFileSync(path.join(tempDir, "milo-settings.json"), "utf8")) as { version: number };
-      expect(migrated.version).toBe(2);
+      expect(migrated.version).toBe(3);
+      expect(store.getPublicSettings()).toMatchObject({
+        uiSoundEnabled: true,
+        miloSoundEnabled: true,
+        activitySoundEnabled: false,
+      });
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
