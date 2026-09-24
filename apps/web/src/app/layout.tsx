@@ -20,11 +20,11 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   title: {
-    default: "Milo — your thoughtful reply coach",
+    default: "Milo — Your AI Companion",
     template: "%s · Milo",
   },
   description:
-    "Upload a dating-chat screenshot and get three natural, editable reply ideas without storing your conversation.",
+    "Milo is a private, intelligent desktop companion that lives with you. It helps you work, learn and focus — while keeping everything personal and under your control.",
 };
 
 export default async function RootLayout({
@@ -32,8 +32,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Per-request rendering is required for Next.js to attach the CSP nonce to
-  // its framework scripts and generated style elements.
   await connection();
   return (
     <html
@@ -42,7 +40,7 @@ export default async function RootLayout({
       className={`h-full antialiased ${jakarta.variable} ${newsreader.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-full">
+      <body className="min-h-full" style={{ background: "#060a10", color: "#e2e8f0" }}>
         <a className="skip-link" href="#main-content">Skip to main content</a>
         {children}
       </body>
