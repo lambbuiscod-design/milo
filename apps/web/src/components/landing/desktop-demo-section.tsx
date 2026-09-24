@@ -6,12 +6,11 @@ import { SpotlightCard } from "../ui/spotlight-card";
 import { MiloHeroCat } from "./milo-hero-cat";
 import {
   MessageSquare,
-  Eye,
-  PenLine,
-  Timer,
+  Sparkles,
+  Zap,
   ChevronRight,
   X,
-  Code2,
+  Heart,
 } from "lucide-react";
 
 type MenuItem = {
@@ -22,38 +21,27 @@ type MenuItem = {
   mood: "happy" | "curious" | "focused" | "celebrating";
 };
 
-// Pre-computed fake document content widths — module-level so render stays pure
-const DOC_LINE_WIDTHS = [1, 0.7, 0.5, 0.8, 0.4, 0.6, 0.9, 0.55];
-const BROWSER_LINE_WIDTHS = [0.9, 0.6, 0.75, 0.5];
-
 const MENU_ITEMS: MenuItem[] = [
   {
-    id: "explain",
-    icon: Eye,
-    label: "Explain this",
-    response: "This defines an async function that fetches user data from an API, handles HTTP errors, and returns a typed response — clean and safe.",
-    mood: "curious",
-  },
-  {
-    id: "reply",
-    icon: PenLine,
-    label: "Write a reply",
-    response: "\"Thanks for sharing — that's genuinely useful context. I'd love to dive deeper when you have a moment.\"",
+    id: "safe",
+    icon: MessageSquare,
+    label: "Safe Reply",
+    response: "\"That sounds like a great plan, I'm down!\"",
     mood: "happy",
   },
   {
-    id: "ask",
-    icon: MessageSquare,
-    label: "Ask Milo",
-    response: "I'm here. What's on screen? What would you like to know or do?",
-    mood: "curious",
+    id: "confident",
+    icon: Sparkles,
+    label: "Confident Reply",
+    response: "\"I know a great spot. Let's do Thursday at 7.\"",
+    mood: "celebrating",
   },
   {
-    id: "focus",
-    icon: Timer,
-    label: "Start focus",
-    response: "25-minute session starting now. Notifications paused. I'll keep watch — you just work.",
-    mood: "focused",
+    id: "playful",
+    icon: Zap,
+    label: "Playful Reply",
+    response: "\"Is that a promise or a threat? 😉\"",
+    mood: "curious",
   },
 ];
 
@@ -103,46 +91,51 @@ export function DesktopDemoSection() {
         {/* The Desktop Environment */}
         <motion.div
           ref={containerRef}
-          className="relative max-w-5xl mx-auto rounded-[24px] overflow-hidden"
+          className="relative max-w-5xl mx-auto rounded-[8px] overflow-hidden border border-white/[0.08]"
           style={{ height: "600px", boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         >
-          <SpotlightCard className="absolute inset-0 bg-[#0A0A0A] !rounded-[24px] z-[-1]" />
+          <SpotlightCard className="absolute inset-0 bg-[#0A0A0A] z-[-1]">
+            <div />
+          </SpotlightCard>
           
-          {/* macOS-style Top Bar */}
-          <div className="absolute top-0 left-0 right-0 h-10 bg-white/[0.02] border-b border-white/[0.04] flex items-center px-4 gap-2 z-0">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-white/[0.15]" />
-              <div className="w-3 h-3 rounded-full bg-white/[0.15]" />
-              <div className="w-3 h-3 rounded-full bg-white/[0.15]" />
+          {/* Windows-style Top Bar */}
+          <div className="absolute top-0 left-0 right-0 h-8 bg-black/40 border-b border-white/[0.04] flex items-center justify-between px-3 z-0">
+            <div className="text-[10px] text-white/30 font-medium">Windows 11</div>
+            <div className="flex gap-4 items-center h-full">
+              <div className="w-3 h-px bg-white/20" />
+              <div className="w-2.5 h-2.5 border border-white/20" />
+              <div className="w-3 h-3 flex items-center justify-center">
+                <div className="w-full h-px bg-white/20 rotate-45 absolute" />
+                <div className="w-full h-px bg-white/20 -rotate-45 absolute" />
+              </div>
             </div>
           </div>
 
-          {/* Fake IDE Window */}
-          <div className="absolute top-20 left-10 w-[60%] h-[400px] rounded-xl border border-white/[0.06] bg-white/[0.02] shadow-2xl p-6 hidden md:block">
-            <div className="flex items-center gap-2 mb-6 border-b border-white/[0.04] pb-4">
-              <Code2 size={16} className="text-white/30" />
-              <div className="text-[11px] font-mono text-white/30 uppercase tracking-widest">app.ts</div>
+          {/* Fake Dating App Window */}
+          <div className="absolute top-20 left-10 w-[60%] h-[400px] rounded-md border border-white/[0.06] bg-white/[0.02] shadow-2xl flex flex-col hidden md:flex overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-white/[0.04] p-4 bg-black/20">
+              <Heart size={16} className="text-[#ffab91]" />
+              <div className="text-[12px] font-medium text-white/70">Sarah, 26</div>
             </div>
-            <div className="space-y-4">
-              {DOC_LINE_WIDTHS.map((width, i) => (
-                <div key={i} className="h-3 rounded-full bg-white/10" style={{ width: `${width * 100}%` }} />
-              ))}
+            <div className="flex-1 p-6 flex flex-col gap-4">
+              <div className="self-start bg-white/10 text-white/80 rounded-2xl rounded-tl-sm px-4 py-2 text-sm max-w-[80%]">
+                Hey! How was your weekend?
+              </div>
+              <div className="self-end bg-[#ffab91]/20 text-[#ffab91] rounded-2xl rounded-tr-sm px-4 py-2 text-sm max-w-[80%]">
+                It was pretty relaxed. Mostly just caught up on reading. You?
+              </div>
+              <div className="self-start bg-white/10 text-white/80 rounded-2xl rounded-tl-sm px-4 py-2 text-sm max-w-[80%]">
+                Went hiking! Was super tiring but fun. We should definitely go sometime.
+              </div>
             </div>
-          </div>
-
-          {/* Fake Browser Window */}
-          <div className="absolute top-32 right-10 w-[50%] h-[450px] rounded-xl border border-white/[0.06] bg-white/[0.01] backdrop-blur-md shadow-2xl p-6 hidden md:block">
-            <div className="w-full h-8 rounded-md bg-white/[0.04] border border-white/[0.04] mb-6 flex items-center px-3">
-              <div className="text-[10px] text-white/20 font-mono">localhost:3000</div>
-            </div>
-            <div className="space-y-4">
-              {BROWSER_LINE_WIDTHS.map((width, i) => (
-                <div key={i} className="h-4 rounded-md bg-white/5" style={{ width: `${width * 100}%` }} />
-              ))}
+            <div className="p-4 border-t border-white/[0.04] bg-black/20 flex gap-2">
+              <div className="h-8 flex-1 bg-white/5 rounded-full border border-white/10 flex items-center px-4">
+                <span className="text-white/20 text-xs animate-pulse">Type a message...</span>
+              </div>
             </div>
           </div>
 
@@ -150,157 +143,107 @@ export function DesktopDemoSection() {
           <AnimatePresence>
             {!menuOpen && !activeResponse && !isDragging && (
               <motion.div
+                className="absolute right-12 bottom-32 text-white/30 text-sm font-medium hidden md:block"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute top-[45%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none"
               >
-                <div className="px-4 py-2 rounded-full bg-white/[0.06] border border-white/[0.08] backdrop-blur-md">
-                  <p className="text-sm font-medium text-white/70">
-                    Try dragging Milo around
-                  </p>
-                </div>
-                <div className="w-0.5 h-12 bg-gradient-to-b from-white/20 to-transparent" />
+                Click or drag Milo
+                <br/>
+                <span className="text-xs text-white/20">(Try Ctrl+Shift+M)</span>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Milo — Draggable Wrapper */}
+          {/* Milo Widget */}
           <motion.div
-            drag
+            className="absolute right-10 bottom-10 z-50 cursor-grab active:cursor-grabbing flex items-end justify-end"
+            drag={!shouldReduceMotion}
             dragConstraints={containerRef}
             dragElastic={0.1}
             dragMomentum={false}
-            onDragStart={() => {
-              setIsDragging(true);
-              setMenuOpen(false);
-              setActiveResponse(null);
-            }}
+            onDragStart={() => setIsDragging(true)}
             onDragEnd={() => setIsDragging(false)}
-            initial={{ x: 200, y: 300 }}
-            className="absolute z-50 flex items-end cursor-grab active:cursor-grabbing"
-            style={{ touchAction: "none" }}
+            onClick={() => {
+              if (!isDragging) {
+                setMenuOpen(!menuOpen);
+                setActiveResponse(null);
+              }
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {/* Context Menu (pops out to the left) */}
-            <AnimatePresence>
-              {menuOpen && !activeResponse && (
+            {/* Pop-out Response */}
+            <AnimatePresence mode="wait">
+              {activeResponse && !menuOpen && (
                 <motion.div
-                  initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, x: 20 }}
-                  animate={{ opacity: 1, scale: 1, x: 0 }}
-                  exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, x: 20 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  className="absolute right-[90px] bottom-4 w-[240px] rounded-[16px] bg-[#121212]/95 backdrop-blur-xl border border-white/[0.08] p-1.5 shadow-2xl"
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+                  className="absolute bottom-[80px] right-0 w-[240px] bg-[#1a1b1e] border border-white/[0.08] rounded-2xl p-4 shadow-2xl origin-bottom-right"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="px-3 py-2 border-b border-white/[0.06] mb-1">
-                    <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">
-                      Context Actions
-                    </p>
+                  <button
+                    onClick={() => setActiveResponse(null)}
+                    className="absolute top-3 right-3 text-white/30 hover:text-white/70 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                  <div className="flex items-center gap-2 mb-2 text-[#90caf9]">
+                    <activeResponse.icon size={14} />
+                    <span className="text-xs font-medium">{activeResponse.label}</span>
+                  </div>
+                  <p className="text-sm text-white/80 leading-relaxed">
+                    {activeResponse.response}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <button className="flex-1 text-[11px] font-medium bg-white/10 hover:bg-white/15 text-white/90 py-1.5 rounded transition-colors" onClick={() => setActiveResponse(null)}>
+                      Copy
+                    </button>
+                    <button className="flex-1 text-[11px] font-medium bg-white/5 hover:bg-white/10 text-white/60 py-1.5 rounded transition-colors" onClick={() => setActiveResponse(null)}>
+                      Dismiss
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Context Menu */}
+            <AnimatePresence>
+              {menuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+                  className="absolute bottom-[80px] right-0 w-[200px] bg-[#1a1b1e] border border-white/[0.08] rounded-xl p-1.5 shadow-2xl origin-bottom-right"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="px-2 py-1.5 border-b border-white/[0.04] mb-1">
+                    <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Reply Options</p>
                   </div>
                   {MENU_ITEMS.map((item) => (
                     <button
                       key={item.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMenuSelect(item);
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-[10px] text-sm text-white/80 transition-colors hover:bg-white/[0.06] hover:text-white group"
+                      onClick={() => handleMenuSelect(item)}
+                      className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-white/[0.06] text-white/70 hover:text-white transition-colors group"
                     >
-                      <div className="flex items-center gap-3">
-                        <item.icon size={16} className="text-white/40 group-hover:text-white/70" />
-                        <span>{item.label}</span>
+                      <div className="flex items-center gap-2.5">
+                        <item.icon size={14} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+                        <span className="text-sm font-medium">{item.label}</span>
                       </div>
-                      <ChevronRight size={14} className="text-white/20 group-hover:text-white/40" />
+                      <ChevronRight size={14} className="opacity-0 group-hover:opacity-50 transition-opacity" />
                     </button>
                   ))}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Response Bubble (pops out above) */}
-            <AnimatePresence>
-              {activeResponse && (
-                <motion.div
-                  initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 10 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  className="absolute bottom-[90px] left-1/2 -translate-x-1/2 w-[280px] rounded-[16px] bg-[#121212]/95 backdrop-blur-xl border border-white/[0.08] p-4 shadow-2xl"
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveResponse(null);
-                    }}
-                    className="absolute top-3 right-3 p-1 rounded-full text-white/40 hover:bg-white/10 hover:text-white transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                  <div className="flex items-center gap-2 mb-2 pr-6">
-                    <activeResponse.icon size={14} className="text-white/60" />
-                    <span className="text-[12px] font-medium text-white/80">{activeResponse.label}</span>
-                  </div>
-                  <p className="text-[13px] text-white/60 leading-relaxed">
-                    {activeResponse.response}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Milo Interaction Target */}
-            <div
-              className="relative"
-              onPointerDown={(e) => {
-                if (activeResponse) {
-                  setActiveResponse(null);
-                } else if (!isDragging) {
-                  setMenuOpen(!menuOpen);
-                }
-                e.stopPropagation();
-              }}
-            >
-              {/* Key light on Milo */}
-              <div
-                className="absolute -top-4 left-1/2 -translate-x-1/2 pointer-events-none"
-                style={{
-                  width: 80,
-                  height: 30,
-                  background: "radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 60%)",
-                  filter: "blur(4px)",
-                }}
-              />
-
-              <motion.div
-                animate={isDragging ? { scale: 0.95, rotate: -5 } : { scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              >
-                <MiloHeroCat
-                  mood={currentMood}
-                  className="w-[80px] h-[80px] drop-shadow-xl"
-                  style={{
-                    filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.6))",
-                  }}
-                />
-              </motion.div>
-
-              {/* Contact shadow */}
-              <div
-                className="absolute -bottom-2 left-1/2 -translate-x-1/2 pointer-events-none"
-                style={{
-                  width: 60,
-                  height: 8,
-                  background: "radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%)",
-                  filter: "blur(3px)",
-                }}
-              />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]">
+              <MiloHeroCat mood={currentMood} />
             </div>
           </motion.div>
+
         </motion.div>
-
-        {/* Mobile notice */}
-        <div className="mt-6 text-center md:hidden">
-          <p className="text-sm text-white/40">Use a desktop device to experience the interactive demo.</p>
-        </div>
-
       </div>
     </section>
   );

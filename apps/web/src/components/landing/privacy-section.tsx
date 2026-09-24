@@ -7,22 +7,22 @@ const PRIVACY_POINTS = [
   {
     icon: EyeOff,
     title: "No persistent memory",
-    description: "Milo doesn't store your conversations or sessions. When you close the app, your context goes with it.",
+    description: "Milo never logs your conversations, names, or generated replies. No transcripts are stored in the cloud.",
   },
   {
     icon: Cpu,
-    title: "Local by default",
-    description: "Many features run directly on your device. Nothing leaves your machine unless you explicitly ask.",
+    title: "100% Local Extraction",
+    description: "Milo reads text using UI Automation and local OCR. Your screen pixels never leave your machine.",
   },
   {
     icon: Shield,
     title: "You control every action",
-    description: "Milo never sends, posts, or acts on your behalf. Every output is a suggestion you choose to use.",
+    description: "Milo never auto-sends or pastes messages on your behalf. Every output is a suggestion for you to copy or edit.",
   },
   {
     icon: Lock,
     title: "Explicit access only",
-    description: "Milo only reads what's on screen when you trigger it. It is never listening in the background.",
+    description: "Milo only reads the single chat window you select. It is never listening or watching in the background.",
   },
 ];
 
@@ -75,7 +75,7 @@ export function PrivacySection() {
               viewport={{ once: true }}
               transition={{ delay: 0.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             >
-              AI doesn't have to be invasive to be useful. Milo is designed with strict boundaries, running locally whenever possible and never hoarding your data.
+              AI doesn&apos;t have to be invasive to be useful. Milo is designed with strict boundaries, running locally whenever possible and never hoarding your data.
             </motion.p>
 
             {/* The Flow Diagram */}

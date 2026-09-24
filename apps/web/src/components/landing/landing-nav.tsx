@@ -39,14 +39,14 @@ export function LandingNav() {
             className="flex items-center justify-between rounded-2xl px-5 py-3 transition-all duration-500"
             style={{
               background: scrolled
-                ? "rgba(10,14,20,0.85)"
-                : "rgba(10,14,20,0.3)",
+                ? "rgba(10,10,10,0.85)"
+                : "rgba(10,10,10,0.3)",
               backdropFilter: "blur(20px)",
               border: scrolled
-                ? "1px solid rgba(52,211,153,0.15)"
-                : "1px solid rgba(255,255,255,0.06)",
+                ? "1px solid rgba(255,255,255,0.08)"
+                : "1px solid rgba(255,255,255,0.04)",
               boxShadow: scrolled
-                ? "0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(52,211,153,0.08)"
+                ? "0 8px 32px rgba(0,0,0,0.4)"
                 : "none",
             }}
           >
@@ -87,15 +87,11 @@ export function LandingNav() {
                 href="/login"
                 className="hidden sm:block text-sm font-medium text-white/50 hover:text-white transition-colors"
               >
-                Sign in
+                Log in
               </Link>
               <Link
                 href="#download"
-                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-[#0a0e14] transition-all hover:scale-105 active:scale-95"
-                style={{
-                  background: "linear-gradient(135deg, #34d399, #10b981)",
-                  boxShadow: "0 0 20px rgba(52,211,153,0.3)",
-                }}
+                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-black transition-all hover:scale-105 active:scale-95 bg-white hover:bg-white/90"
               >
                 Get Milo
               </Link>
@@ -141,7 +137,7 @@ export function LandingNav() {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
             <motion.nav
               className="absolute top-24 left-5 right-5 rounded-2xl overflow-hidden"
-              style={{ background: "rgba(10,14,20,0.95)", border: "1px solid rgba(52,211,153,0.15)" }}
+              style={{ background: "rgba(10,10,10,0.95)", border: "1px solid rgba(255,255,255,0.08)" }}
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -20, opacity: 0 }}
@@ -158,14 +154,20 @@ export function LandingNav() {
                   {label}
                 </a>
               ))}
-              <div className="p-4">
+              <div className="p-4 flex flex-col gap-3">
                 <Link
-                  href="#download"
-                  className="flex items-center justify-center w-full rounded-xl px-5 py-3 font-bold text-[#0a0e14]"
-                  style={{ background: "linear-gradient(135deg, #34d399, #10b981)" }}
+                  href="/login"
+                  className="flex items-center justify-center w-full rounded-xl px-5 py-3 font-medium text-white/60 bg-white/5"
                   onClick={() => setMobileOpen(false)}
                 >
-                  Get Milo Free
+                  Log in
+                </Link>
+                <Link
+                  href="#download"
+                  className="flex items-center justify-center w-full rounded-xl px-5 py-3 font-bold text-black bg-white"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Get Milo
                 </Link>
               </div>
             </motion.nav>

@@ -64,7 +64,7 @@ export function HeroSection() {
             className="mb-8"
           >
             <span className="text-[11px] font-semibold tracking-[0.25em] text-white/40 uppercase">
-              The Desktop Companion
+              Windows Exclusive
             </span>
           </motion.div>
 
@@ -76,18 +76,18 @@ export function HeroSection() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           >
-            A private AI. <br />
-            <span className="text-white/40">Lives with you.</span>
+            Know what to say. <br />
+            <span className="text-white/40">Keep it private.</span>
           </motion.h1>
 
           {/* Sub-copy */}
           <motion.p
-            className="mt-6 text-lg leading-[1.7] text-white/50 max-w-[440px]"
+            className="mt-6 text-[15px] sm:text-lg leading-[1.7] text-white/50 max-w-[440px]"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            Milo helps you focus, learn, and create — quietly, locally, and entirely on your terms. No cloud. No tracking.
+            Milo is a desktop companion that gives you Safe, Confident, and Playful reply suggestions for difficult conversations and dating apps. Your screen stays local.
           </motion.p>
 
           {/* Clean minimal CTA */}

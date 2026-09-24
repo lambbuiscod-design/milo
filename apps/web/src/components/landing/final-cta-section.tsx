@@ -1,34 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { MiloHeroCat } from "./milo-hero-cat";
-
-const MEMORIES = [
-  "That time you stayed up to finish the project.",
-  "How you always start slow but finish strong.",
-  "Your favorite focus playlist. Or silence.",
-  "The streak you broke. And rebuilt.",
-  "That bug you finally fixed at 11pm.",
-];
 
 export function FinalCtaSection() {
   const [hovering, setHovering] = useState(false);
-  const [memIdx, setMemIdx] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shouldReduceMotion = useReducedMotion();
-
-  function startMemoryCycle() {
-    setHovering(true);
-    intervalRef.current = setInterval(() => {
-      setMemIdx((i) => (i + 1) % MEMORIES.length);
-    }, 1400);
-  }
-
-  function stopMemoryCycle() {
-    setHovering(false);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  }
 
   return (
     <section id="download" className="relative py-40 overflow-hidden border-t border-white/[0.04]">
@@ -81,67 +59,54 @@ export function FinalCtaSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
-          A companion that <br />
-          <span className="text-white/40">remembers you.</span>
+          Never run out <br />
+          <span className="text-white/40">of things to say.</span>
         </motion.h2>
 
-        {/* Interactive Memory Ticker */}
-        <div className="h-10 mb-12 flex justify-center">
-          <AnimatePresence mode="wait">
-            {!hovering ? (
-              <motion.p
-                key="default"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="text-white/40 text-[15px]"
-              >
-                (Hover the button below)
-              </motion.p>
-            ) : (
-              <motion.div
-                key={memIdx}
-                initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                transition={{ duration: 0.4 }}
-                className="inline-flex px-5 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md"
-              >
-                <p className="text-[13px] font-medium text-white/80">
-                  {MEMORIES[memIdx]}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <motion.p
+          className="text-white/50 text-base sm:text-lg max-w-lg mx-auto mb-10"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        >
+          Try Milo with 5 free analyses. Upgrade to Milo Premium for $9.99/mo to unlock unlimited Safe, Confident, and Playful replies.
+        </motion.p>
 
-        {/* Action Button */}
+        {/* The Action */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          className="flex flex-col items-center gap-6"
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
           <a
-            href="#download"
-            className="inline-flex items-center justify-center gap-2 rounded-full px-10 py-4 text-[15px] font-medium text-black bg-white transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
-            onMouseEnter={startMemoryCycle}
-            onMouseLeave={stopMemoryCycle}
-            onFocus={startMemoryCycle}
-            onBlur={stopMemoryCycle}
+            href="/login"
+            className="group relative h-14 flex items-center justify-center px-10 rounded-full font-bold text-black overflow-hidden select-none outline-none focus-visible:ring-4 focus-visible:ring-white/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
             style={{
-              boxShadow: hovering ? "0 0 0 4px rgba(255,255,255,0.1), 0 12px 40px rgba(255,255,255,0.15)" : "none",
+              background: "linear-gradient(180deg, #ffffff 0%, #dcdcdc 100%)",
+              boxShadow: "0 8px 24px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,1)",
             }}
+            onMouseEnter={() => setHovering(true)}
+            onMouseLeave={() => setHovering(false)}
+            onFocus={() => setHovering(true)}
+            onBlur={() => setHovering(false)}
           >
-            Download Milo
+            {/* Shimmer effect */}
+            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+            <span className="relative z-10">Download for Windows</span>
           </a>
-          
-          <p className="mt-6 text-[12px] font-semibold tracking-wide text-white/30 uppercase">
-            Mac, Windows, Linux
-          </p>
-        </motion.div>
 
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[11px] font-medium text-white/30 uppercase tracking-widest">
+              Available exclusively on Windows 10 & 11
+            </p>
+            <a href="/login" className="text-[13px] text-white/40 hover:text-white transition-colors underline underline-offset-4">
+              Already have an account? Log in
+            </a>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

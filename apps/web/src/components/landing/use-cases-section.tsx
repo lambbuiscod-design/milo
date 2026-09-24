@@ -5,10 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SpotlightCard } from "../ui/spotlight-card";
 import { MiloHeroCat } from "./milo-hero-cat";
 import {
-  GraduationCap,
-  Code2,
-  Palette,
-  Coffee,
+  Heart,
+  MessageCircle,
+  Briefcase,
 } from "lucide-react";
 
 type UseCase = {
@@ -22,55 +21,42 @@ type UseCase = {
 
 const USE_CASES: UseCase[] = [
   {
-    id: "student",
-    label: "Student",
-    icon: GraduationCap,
-    mood: "curious",
-    headline: "Study smarter with Milo.",
+    id: "dating",
+    label: "Dating Apps",
+    icon: Heart,
+    mood: "celebrating",
+    headline: "Stand out in the inbox.",
     items: [
-      "Summarize lecture notes instantly",
-      "Explain complex concepts simply",
-      "Set focus sessions with Pomodoro",
-      "Track study goals and streaks",
+      "Break the ice confidently",
+      "Keep the conversation flowing naturally",
+      "Match their tone with Playful mode",
+      "Move from chat to a real date",
     ],
   },
   {
-    id: "developer",
-    label: "Developer",
-    icon: Code2,
+    id: "messaging",
+    label: "Messaging Apps",
+    icon: MessageCircle,
+    mood: "happy",
+    headline: "Never run out of things to say.",
+    items: [
+      "Respond to long, complex messages easily",
+      "Keep group chats engaging",
+      "Handle awkward pauses",
+      "Reply quickly with Ctrl+Shift+M",
+    ],
+  },
+  {
+    id: "professional",
+    label: "Tense Chats",
+    icon: Briefcase,
     mood: "focused",
-    headline: "Ship faster with Milo.",
+    headline: "Navigate difficult conversations safely.",
     items: [
-      "Debug errors with explanation",
-      "Generate code snippets inline",
-      "Understand unfamiliar code",
-      "Draft commit messages and docs",
-    ],
-  },
-  {
-    id: "creator",
-    label: "Creator",
-    icon: Palette,
-    mood: "happy",
-    headline: "Create more with Milo.",
-    items: [
-      "Brainstorm ideas on demand",
-      "Improve your writing tone",
-      "Draft captions and copy",
-      "Organize creative projects",
-    ],
-  },
-  {
-    id: "everyday",
-    label: "Everyday",
-    icon: Coffee,
-    mood: "happy",
-    headline: "Make every day easier.",
-    items: [
-      "Quick task and reminder tracking",
-      "Help with messages and emails",
-      "Daily focus and productivity",
-      "Just someone to think out loud with",
+      "De-escalate sensitive arguments",
+      "Use Safe mode for neutral responses",
+      "Set boundaries respectfully",
+      "Keep emotions out of professional chats",
     ],
   },
 ];
@@ -91,7 +77,7 @@ export function UseCasesSection() {
             viewport={{ once: true }}
             transition={{ ease: [0.16, 1, 0.3, 1] }}
           >
-            Built for Everyone
+            Built for Connection
           </motion.p>
           <motion.h2
             className="font-bold text-white tracking-[-0.04em]"
@@ -149,41 +135,35 @@ export function UseCasesSection() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.4 }}
-                  className="grid sm:grid-cols-2 gap-10 items-center h-full"
+                  transition={{ duration: 0.3 }}
+                  className="relative z-10"
                 >
-                  <div>
-                    <h3 className="text-2xl font-bold text-white tracking-tight mb-6">{active.headline}</h3>
-                    <ul className="space-y-4">
-                      {active.items.map((item, i) => (
-                        <motion.li
-                          key={i}
-                          className="flex items-start gap-3"
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                        >
-                          <div className="mt-1 flex-shrink-0 w-4 h-4 rounded-full border border-white/20 flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                          </div>
-                          <span className="text-sm text-white/60 leading-relaxed">{item}</span>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="flex justify-center sm:justify-end relative">
-                    <div
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full pointer-events-none"
-                      style={{ background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)" }}
-                    />
-                    <MiloHeroCat mood={active.mood} className="w-[160px] h-[160px] relative z-10 drop-shadow-2xl" />
+                  <div className="flex items-start justify-between gap-8">
+                    <div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-8">
+                        {active.headline}
+                      </h3>
+                      <ul className="space-y-4">
+                        {active.items.map((item, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-white/20 mt-2.5 flex-shrink-0" />
+                            <span className="text-white/60 text-[15px] leading-relaxed">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="hidden sm:block w-32 h-32 flex-shrink-0 opacity-80">
+                      <MiloHeroCat mood={active.mood} />
+                    </div>
                   </div>
                 </motion.div>
               </AnimatePresence>
+
+              {/* Decorative background element */}
+              <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-white/[0.02] rounded-full blur-3xl pointer-events-none" />
             </SpotlightCard>
           </motion.div>
-
+          
         </div>
       </div>
     </section>

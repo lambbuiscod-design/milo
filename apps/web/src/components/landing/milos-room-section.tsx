@@ -26,7 +26,7 @@ const ROOM_THEMES: RoomTheme[] = [
     floor: "rgba(255,180,100,0.02)",
     baseboard: "rgba(255,180,100,0.1)",
     accent: "rgba(255,180,100,0.8)",
-    description: "Warm amber light, soft textures. For late evening focus.",
+    description: "Warm amber light, soft textures. For late evening conversations.",
   },
   {
     id: "studio",
@@ -37,7 +37,7 @@ const ROOM_THEMES: RoomTheme[] = [
     floor: "rgba(255,255,255,0.01)",
     baseboard: "rgba(255,255,255,0.08)",
     accent: "rgba(255,255,255,0.8)",
-    description: "Clean lines, cool glow, a focused developer's space.",
+    description: "Clean lines, cool glow, a distraction-free space.",
   },
   {
     id: "garden",
@@ -48,7 +48,7 @@ const ROOM_THEMES: RoomTheme[] = [
     floor: "rgba(150,255,150,0.02)",
     baseboard: "rgba(150,255,150,0.1)",
     accent: "rgba(150,255,150,0.7)",
-    description: "Soft greens, calm, open. Designed for deep thinking.",
+    description: "Soft greens, calm, open. Designed for relaxed reading.",
   },
 ];
 
@@ -108,7 +108,7 @@ export function MilosRoomSection() {
             transition={{ delay: 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
             Make it yours.<br />
-            <span className="text-white/40">Customize Milo's environment.</span>
+            <span className="text-white/40">Customize Milo&apos;s environment.</span>
           </motion.h2>
         </div>
 

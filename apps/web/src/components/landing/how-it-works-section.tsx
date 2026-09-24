@@ -5,27 +5,51 @@ import { motion } from "framer-motion";
 const STEPS = [
   {
     num: "01",
-    label: "Nearby",
-    title: "Milo lives in the corner of your screen.",
+    label: "Install",
+    title: "Install Milo on Windows.",
     description:
-      "A compact, unobtrusive widget sits wherever you want it — invisible when you're in flow, ready when you need it. No dock icon. No switching apps.",
-    detail: "⌃Space to summon",
+      "Milo is a native, lightweight Windows application. It lives quietly in the corner of your screen, ready when you need it.",
+    detail: "Windows 10/11",
   },
   {
     num: "02",
-    label: "On demand",
-    title: "You decide when to ask for help.",
+    label: "Target",
+    title: "Explicitly select one chat window.",
     description:
-      "When you're stuck, curious, or need a hand — press the hotkey or click Milo. He's ready in under a second. No loading screens. No context switching.",
-    detail: "Responds in < 1s",
+      "Milo doesn't spy on your whole screen. You select the exact dating or messaging app window you want help with.",
+    detail: "Strictly scoped",
   },
   {
     num: "03",
-    label: "Your call",
-    title: "Milo helps. You decide what happens next.",
+    label: "Extract",
+    title: "Local text extraction.",
     description:
-      "Milo gives you a suggestion, an explanation, or a draft. Nothing is sent, posted, or acted on without you. You're always the one who decides.",
-    detail: "You're always in control",
+      "When activated, Milo reads the recent visible text using UI Automation first, with local OCR as a fallback. No pixels ever leave your device.",
+    detail: "100% Local Processing",
+  },
+  {
+    num: "04",
+    label: "Activate",
+    title: "Click or use Ctrl+Shift+M.",
+    description:
+      "Milo only acts when you ask it to. Click the companion or press the hotkey to request reply suggestions.",
+    detail: "Ctrl+Shift+M",
+  },
+  {
+    num: "05",
+    label: "Suggest",
+    title: "Safe, Confident, and Playful.",
+    description:
+      "Milo gives you three distinct reply options based on the context of the conversation. Choose the tone that fits best.",
+    detail: "3 Tone Options",
+  },
+  {
+    num: "06",
+    label: "Control",
+    title: "You're always in charge.",
+    description:
+      "Copy your favorite suggestion or edit it yourself. Milo never auto-sends or pastes messages on your behalf.",
+    detail: "No auto-send",
   },
 ];
 
