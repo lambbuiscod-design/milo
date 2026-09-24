@@ -1,6 +1,6 @@
 # Milo Windows MVP status
 
-Last verified: 2026-09-13
+Last verified: 2026-09-24
 
 ## COMPLETE
 
@@ -16,12 +16,12 @@ Last verified: 2026-09-13
 - Exactly Safe, Confident, and Playful ephemeral suggestions are returned for manual editing/copying.
 - Account, billing, privacy, and terms open only fixed Milo web destinations in the system browser; no token is placed in a URL.
 - The deterministic offline `Milo.TestChat` fixture covers UIA, owner-drawn OCR, English/Italian samples, append, close, and recreation.
-- Node 24 lint, typecheck, all unit tests, production web/desktop builds, desktop security contracts, real UIA extraction, real English OCR, Electron shell runtime, packaging, 476-file artifact scan, and packaged launch have passed.
+- Node 26 lint, typecheck, all unit tests, production web/desktop builds, desktop security contracts, real UIA extraction, real English OCR, Electron shell runtime, packaging, 476-file artifact scan, and packaged launch have passed.
 - A fresh unsigned Windows installer and checksum exist under `apps/desktop/out/make/squirrel.windows/x64`.
 - The desktop now includes the approved premium home/workspace/settings/Room/customization UI, local progression and unlock enforcement, layered cat appearance, granular sound controls, and secure content-free local-data export/reset.
 - The canonical Git remote is configured and the verified work is pushed on `codex/milo-release`.
 - Next.js 16.3.3 and Sharp 0.35.4 resolve the current critical/high advisories; the production dependency audit reports no known vulnerabilities.
-- The complete local release verification passes on pinned Node 24.19.0, pnpm 10.34.5, and .NET SDK 10.0.302: frozen install, lint, typecheck, 610 unit tests, native protocol/fixture checks, web/desktop builds, 14 browser E2Es, Electron runtime smoke, Squirrel installer, 479-file artifact scan, ASAR tamper rejection, and production audit.
+- The complete local release verification passes on pinned Node 26.4.0, pnpm 10.34.5, and .NET SDK 9.0.305: frozen install, lint, typecheck, 611 unit tests, native protocol/fixture checks, web/desktop builds, 14 browser E2Es, Electron runtime smoke, Squirrel installer, 479-file artifact scan, ASAR tamper rejection, and production audit.
 
 ## PARTIAL
 

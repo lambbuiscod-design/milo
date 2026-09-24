@@ -62,8 +62,8 @@ test("landing page is usable at 360px without horizontal overflow", async ({ pag
   const scriptDirective = policy.split(";").find((directive) => directive.trim().startsWith("script-src ")) ?? "";
   expect(scriptDirective).toContain("'strict-dynamic'");
   expect(scriptDirective).not.toContain("'unsafe-inline'");
-  await expect(page.getByRole("heading", { name: /Never stare at the reply box/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Try 5 analyses free/i }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Know what to say/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Get Milo/i }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await page.keyboard.press("Tab");
   const skipLink = page.getByRole("link", { name: "Skip to main content" });

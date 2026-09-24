@@ -2,8 +2,8 @@
 
 ## Reproducible tools
 
-Use Windows x64, Node **24.19.0** (`.node-version`), pnpm **10.34.5**
-(`packageManager`), and .NET SDK **10.0.302** (`global.json`). Put those
+Use Windows x64, Node **26.4.0** (`.node-version`), pnpm **10.34.5**
+(`packageManager`), and .NET SDK **9.0.305** (`global.json`). Put those
 executables on PATH before running commands. The SDK cannot roll forward.
 Portable installations are supported; set `DOTNET_ROOT` to the portable SDK
 directory. Do not rely on the system Node or SDK being the correct version.

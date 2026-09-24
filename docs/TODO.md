@@ -1,10 +1,10 @@
 # Milo Windows MVP TODO
 
-Last verified: 2026-09-13
+Last verified: 2026-09-24
 
 ## Completed locally
 
-- [x] Preserve the web/backend control plane and establish the Node 24 pnpm monorepo.
+- [x] Preserve the web/backend control plane and establish the Node 26 pnpm monorepo.
 - [x] Build the hardened Electron floating companion and approved UI states.
 - [x] Implement explicit one-window selection and stable native identity validation.
 - [x] Integrate the bounded .NET helper and read-only UI Automation extraction.

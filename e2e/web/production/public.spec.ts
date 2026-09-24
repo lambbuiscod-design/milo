@@ -21,8 +21,8 @@ test("production landing page has secure headers and no overflow", async ({ page
   const headers = response?.headers() ?? {};
   expect(headers["content-security-policy"]).toContain("'strict-dynamic'");
   expect(headers["strict-transport-security"]).toContain("max-age=31536000");
-  await expect(page.getByRole("heading", { name: /Never stare at the reply box/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Choose a tone that still sounds like you/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Know what to say/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /A companion you can trust/i })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

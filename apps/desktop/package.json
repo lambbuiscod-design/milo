@@ -8,7 +8,7 @@
   "private": true,
   "main": ".vite/build/main.js",
   "engines": {
-    "node": "24.x"
+    "node": "26.x"
   },
   "scripts": {
     "dev": "pnpm build && electron .",
