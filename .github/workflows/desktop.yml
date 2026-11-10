@@ -99,6 +99,9 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install checksum-verified Electron runtime
+        run: pnpm desktop:install-runtime
+
       - name: Verify source and workflow contracts
         run: >-
           node --test --test-isolation=none

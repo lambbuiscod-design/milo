@@ -8,9 +8,10 @@
   "private": true,
   "main": ".vite/build/main.js",
   "engines": {
-    "node": "26.x"
+    "node": "24.x"
   },
   "scripts": {
+    "install:runtime": "install-electron",
     "dev": "pnpm build && electron .",
     "build": "vite build --config vite.renderer.config.ts --configLoader native && vite build --config vite.preload.config.ts --configLoader native && vite build --config vite.main.config.ts --configLoader native",
     "start": "electron .",
@@ -28,7 +29,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tesseract.js": "^7.0.0",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@electron-forge/cli": "7.11.2",
@@ -41,10 +42,10 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "5.2.0",
-    "electron": "43.4.1",
+    "electron": "43.8.1",
     "typescript": "5.9.3",
-    "vite": "7.3.6",
-    "vitest": "4.1.10",
+    "vite": "7.3.7",
+    "vitest": "4.1.12",
     "@milo/test-fixtures": "workspace:*"
   }
 }

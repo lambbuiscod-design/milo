@@ -5,7 +5,7 @@
   "private": true,
   "sideEffects": false,
   "engines": {
-    "node": "26.x"
+    "node": "24.x"
   },
   "exports": {
     ".": "./src/index.ts"
@@ -15,10 +15,10 @@
     "test": "vitest run --environment node"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "4.1.12"
   }
 }

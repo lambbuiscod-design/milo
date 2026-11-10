@@ -4,12 +4,12 @@
   "type": "module",
   "private": true,
   "engines": {
-    "node": "26.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev",
     "preview:local": "node scripts/local-preview.mjs",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -22,28 +22,24 @@
     "@milo/contracts": "workspace:*",
     "@milo/security": "workspace:*",
     "@openrouter/sdk": "^1.2.3",
-    "@react-three/drei": "^10.7.8",
-    "@react-three/fiber": "^9.7.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.111.0",
     "@tesseract.js-data/eng": "1.0.0",
-    "@types/three": "^0.186.0",
     "clsx": "^2.1.1",
     "framer-motion": "^13.4.0",
     "lucide-react": "^1.28.0",
-    "next": "16.3.3",
+    "next": "16.4.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
-    "sharp": "0.35.4",
+    "sharp": "0.35.5",
     "stripe": "^22.4.0",
     "tailwind-merge": "^3.7.0",
     "tesseract.js": "^7.0.0",
-    "three": "^0.186.0",
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
-    "@next/env": "^16.2.12",
+    "@next/env": "16.4.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.0",
     "@types/node": "^24.10.0",
@@ -51,10 +47,10 @@
     "@types/react-dom": "^19.2.4",
     "daisyui": "^5.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.4.1",
     "jsdom": "^30.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "4.1.12"
   }
 }
