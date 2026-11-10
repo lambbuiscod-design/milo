@@ -10,7 +10,7 @@ const source = ["App.xaml.cs", "FixtureOptions.cs", "SyntheticConversation.cs", 
 const docs = readFileSync(resolve(fixture, "README.md"), "utf8");
 
 const required = [
-  "net9.0-windows10.0.19041.0",
+  "net10.0-windows10.0.19041.0",
   "UseWPF",
   "FixtureMode.OcrOnly",
   "FixtureLanguage.Italian",
